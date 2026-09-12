@@ -1,0 +1,8 @@
+module pulse
+singleton Theme 1.0 Theme.qml
+Backend 1.0 Backend.qml
+Main 1.0 Main.qml
+ChromeBar 1.0 ChromeBar.qml
+WheelColumn 1.0 WheelColumn.qml
+ChromeButton 1.0 ChromeButton.qml
+StatusStrip 1.0 StatusStrip.qml
