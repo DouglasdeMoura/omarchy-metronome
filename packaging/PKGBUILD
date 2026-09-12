@@ -1,0 +1,26 @@
+# Maintainer: Douglas Moura <doug@douglasmoura.com>
+pkgname=pulse
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A metronome for Omarchy: Rust backend, Quickshell/QML frontend, follows the Omarchy theme"
+arch=(x86_64 aarch64)
+url="https://github.com/douglasdemoura/pulse"
+license=(MIT)
+depends=(quickshell alsa-lib)
+makedepends=(cargo)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=("SKIP")
+
+build() {
+  cd "$pkgname-$pkgver"
+  cargo build --release --locked
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 target/release/pulse "$pkgdir/usr/bin/pulse"
+  install -d "$pkgdir/usr/share/pulse"
+  cp -r ui "$pkgdir/usr/share/pulse/ui"
+  install -Dm644 packaging/pulse.desktop "$pkgdir/usr/share/applications/pulse.desktop"
+  install -Dm644 packaging/pulse.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/pulse.svg"
+}

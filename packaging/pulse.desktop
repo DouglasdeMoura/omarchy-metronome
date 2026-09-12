@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Pulse
+GenericName=Metronome
+Comment=A metronome that follows your Omarchy theme
+Exec=pulse
+Icon=pulse
+Terminal=false
+Categories=AudioVideo;Audio;Utility;
+Keywords=metronome;tempo;music;practice;omarchy;
+StartupWMClass=com.douglasdemoura.pulse
