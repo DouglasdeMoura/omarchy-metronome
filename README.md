@@ -1,0 +1,95 @@
+# Pulse
+
+A metronome for [Omarchy](https://omarchy.org): Rust backend, Quickshell/QML
+frontend, and a look that follows your Omarchy theme live — change themes with
+`omarchy theme set` and Pulse repaints without a restart, the same way
+[Flea](https://github.com/thisisgm/flea) does.
+
+![stack](https://img.shields.io/badge/Rust-backend-informational) ![stack](https://img.shields.io/badge/Quickshell%2FQML-frontend-purple)
+
+## Features
+
+- **Sample-accurate clicks.** The audio callback mixes each click at an exact
+  frame on the output device (via [cpal](https://github.com/RustAudio/cpal),
+  through PipeWire/ALSA); the beat meters are driven by the same timeline, so
+  what you see is what you hear.
+- **Tempo at hand.** A slider and ± steppers over 10–400 BPM; above the
+  number, the classical marking names what the beat is relative to — Largo,
+  Andante, Allegretto, Presto…
+- **Time signature editor.** Click the signature to pick 1–16 counts per bar
+  over a 1, 2, 4 or 8 bottom number — 4/4, 6/8, 3/2, 12/8 and friends; the
+  tick is the notated value, so 6/8 at 120 ticks on the eighth.
+- **Per-beat voices.** A rectangle for every beat, divided in three bars:
+  click to fill one, two or all three — low, medium or high tick — or leave
+  it empty for silence, and build a pattern instead of a flat tick.
+- **Tap tempo**: tap the button or press `t` in rhythm.
+- **Omarchy theming**: colors, type scale, spacing and corner radius all come
+  from the live theme (`colors.toml`, `shell.toml`), watched for changes.
+- **Remembers itself**: bpm, meter and subdivision persist in
+  `~/.config/pulse/state.json`.
+- **Keyboard-first**, like Flea:
+
+| key | action |
+| --- | --- |
+| `space` | start / stop |
+| `t` | tap tempo |
+| `↑` / `↓` | tempo ±1 (`shift` ±5, `PgUp`/`PgDn` ±10) |
+| `1`–`4` | subdivision |
+| `esc` | stop |
+| `ctrl+q` | quit |
+
+## Running
+
+```sh
+cargo build --release
+./target/release/pulse
+```
+
+A checkout finds its own `ui/` automatically; `PULSE_UI`, `PULSE_BIN`,
+`PULSE_SILENT` (protocol without audio, for tests and headless boxes) and
+`PULSE_FONT` are the dev seams — see `src/paths.rs` and `src/gui.rs`.
+
+## Installing
+
+```sh
+sudo install -Dm755 target/release/pulse /usr/local/bin/pulse
+sudo cp -r ui /usr/local/share/pulse/ui
+sudo cp packaging/pulse.desktop /usr/share/applications/
+sudo cp packaging/pulse.svg /usr/share/icons/hicolor/scalable/apps/
+```
+
+If you want Pulse to open as a small floating window instead of a tile, give
+Hyprland a rule (Omarchy's `~/.config/hypr/` user conf or a drop-in):
+
+```ini
+windowrule = float, class:^(com\.douglasdemoura\.pulse)$
+```
+
+## Architecture
+
+Two processes, one app — Flea's shape:
+
+```
+pulse (CLI)
+ └─ exec qs -p ui/shell.qml          the window; PULSE_BIN tells QML who to call
+     └─ Process: pulse --backend     json lines over stdio, docs/protocol.md
+         └─ cpal output stream        the timeline and the clicks
+```
+
+- `src/backend/engine.rs` — the metronome: one f64 frame timeline, click
+  synthesis, and the realtime rules (the callback only touches atomics; params
+  land at the next click boundary, where a musician expects them). No device?
+  A silent clock keeps the visuals alive.
+- `ui/Theme.qml` — reads `~/.local/state/omarchy/current/theme/colors.toml`
+  and `shell.toml` before the first paint and watches `theme.name`, the one
+  file `omarchy-theme-set` rewrites in place, so the watch survives theme
+  switches. Hyprland answers for corner rounding and reduced motion.
+- `src/json.rs` — the whole of the wire-format code; besides cpal the backend
+  is std-only.
+
+## Tests
+
+```sh
+cargo test          # timeline, protocol, json, state
+printf '{"c":"start"}\n' | PULSE_SILENT=1 ./target/release/pulse --backend
+```
