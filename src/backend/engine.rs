@@ -49,7 +49,7 @@ impl Default for Params {
 pub const BPM_MIN: f64 = 10.0;
 pub const BPM_MAX: f64 = 400.0;
 pub const BEATS_MIN: u32 = 1;
-pub const BEATS_MAX: u32 = 12;
+pub const BEATS_MAX: u32 = 16;
 
 impl Params {
     pub fn clamp(&mut self) {
@@ -139,7 +139,7 @@ impl Params {
             // A short array preserves the tail; an entry that is not 0..3 is
             // refused, not clamped, so a sloppy client learns the wire.
             if items.len() > BEATS_MAX as usize {
-                return Err("voices must contain at most twelve entries".into());
+                return Err("voices must contain at most sixteen entries".into());
             }
             let mut voices = self.voices;
             for (i, item) in items.iter().take(BEATS_MAX as usize).enumerate() {
@@ -404,9 +404,11 @@ impl AtomicParams {
         self.version.fetch_add(1, Ordering::SeqCst);
         self.bpm.store(params.bpm.to_bits(), Ordering::SeqCst);
         self.volume.store(params.volume.to_bits(), Ordering::SeqCst);
-        let mut pattern = params.beats as u64 | ((params.denominator as u64) << 4);
+        // One word: beats in the low byte, denominator in the next, then
+        // two bits per voice slot — 16 + 32 bits, well inside the u64.
+        let mut pattern = params.beats as u64 | ((params.denominator as u64) << 8);
         for (i, voice) in params.voices.iter().enumerate() {
-            pattern |= (*voice as u64) << (8 + i * 2);
+            pattern |= (*voice as u64) << (16 + i * 2);
         }
         self.pattern.store(pattern, Ordering::SeqCst);
         self.version.fetch_add(1, Ordering::SeqCst);
@@ -426,9 +428,9 @@ impl AtomicParams {
         Some(Params {
             bpm,
             volume,
-            beats: (pattern & 15) as u32,
-            denominator: ((pattern >> 4) & 15) as u32,
-            voices: std::array::from_fn(|i| ((pattern >> (8 + i * 2)) & 3) as u8),
+            beats: (pattern & 0xff) as u32,
+            denominator: ((pattern >> 8) & 0xff) as u32,
+            voices: std::array::from_fn(|i| ((pattern >> (16 + i * 2)) & 3) as u8),
         })
     }
 }
@@ -793,10 +795,10 @@ mod tests {
         let first = Params::default();
         let second = Params {
             bpm: 397.125,
-            beats: 12,
+            beats: BEATS_MAX,
             denominator: 8,
             volume: 0.1234,
-            voices: [2; 12],
+            voices: [2; BEATS_MAX as usize],
         };
         let shared = Arc::new(AtomicParams::new(&first));
         let writer = shared.clone();
@@ -814,6 +816,34 @@ mod tests {
         }
         thread.join().unwrap();
         assert_eq!(shared.load(), Some(first));
+    }
+
+    #[test]
+    fn the_widest_meter_survives_the_atomic_round_trip() {
+        // 16 needs five bits; a four-bit field would read it back as 0 and
+        // the callback would divide by it.
+        let mut p = params(120.0, BEATS_MAX, 8);
+        p.voices = std::array::from_fn(|i| (i % 4) as u8);
+        let shared = AtomicParams::new(&p);
+        assert_eq!(shared.load(), Some(p.clone()));
+        let mut tl = Timeline::new();
+        tl.arm(0, 0.0, SR);
+        let mut events = Vec::new();
+        let mut buf = vec![0.0f32; SR as usize * 5];
+        tl.mix_into(&mut buf, 1, 0, &shared.load().unwrap(), SR, &mut events);
+        // 5 s at 120 on the eighth is 20 ticks: one full 16-bar and four more.
+        assert_eq!(events.len(), 20);
+        for (i, ev) in events.iter().enumerate() {
+            let beat = (i % BEATS_MAX as usize) as u32;
+            assert_eq!(
+                *ev,
+                Ev::Beat {
+                    beat,
+                    kind: kind_for(beat, &p)
+                }
+            );
+        }
+        assert_eq!(tl.beat, 4);
     }
 
     #[test]
@@ -864,7 +894,7 @@ mod tests {
                     for beats in 1..=BEATS_MAX {
                         for voice in 0..=VOICE_HIGH {
                             let mut p = params(bpm, beats, denominator);
-                            p.voices = [voice; 12];
+                            p.voices = [voice; BEATS_MAX as usize];
                             let mut tl = Timeline::new();
                             tl.arm(0, 0.0, sr);
                             let mut events = Vec::new();
@@ -941,13 +971,22 @@ mod tests {
     }
 
     #[test]
-    fn state_requires_an_object_and_at_most_twelve_voices() {
+    fn state_requires_an_object_and_at_most_sixteen_voices() {
         let mut p = Params::default();
         assert!(p.apply_patch(&Json::Null).is_err());
+        // A pre-16 state file carries twelve slots; it still loads, and the
+        // four it never knew keep their defaults.
+        let twelve = Json::obj(vec![("voices", Json::Arr(vec![Json::int(2); 12]))]);
+        p.apply_patch(&twelve).unwrap();
+        assert_eq!(&p.voices[..12], &[2; 12]);
+        assert_eq!(&p.voices[12..], &[VOICE_LOW; 4]);
+        let sixteen = Json::obj(vec![("voices", Json::Arr(vec![Json::int(3); 16]))]);
+        p.apply_patch(&sixteen).unwrap();
+        assert_eq!(p.voices, [3; 16]);
         assert!(p
             .apply_patch(&Json::obj(vec![(
                 "voices",
-                Json::Arr(vec![Json::int(1); 13])
+                Json::Arr(vec![Json::int(1); 17])
             )]))
             .is_err());
     }
@@ -1173,7 +1212,7 @@ mod tests {
 
         // Nothing at all is on: every position walks, not one sample sounds.
         let mut p = params(120.0, 4, 4);
-        p.voices = [0; 12]; // all silent
+        p.voices = [0; BEATS_MAX as usize]; // all silent
         let mut tl = Timeline::new();
         tl.arm(0, 0.0, SR);
         let mut buf = vec![0.0f32; 96_000];
@@ -1227,7 +1266,7 @@ mod tests {
             (3u8, Kind::High, 1800.0),
         ] {
             let mut p = params(120.0, 4, 4);
-            p.voices = [voice; 12];
+            p.voices = [voice; BEATS_MAX as usize];
             let mut tl = Timeline::new();
             tl.arm(0, 0.0, SR);
             let mut out = vec![0.0f32; 48_000];
@@ -1279,7 +1318,7 @@ mod tests {
     fn audible_and_muted_beats_survive_every_buffer_shape() {
         let sr = 44_100.0;
         let mut p = params(113.0, 4, 4);
-        p.voices = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+        p.voices = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
         let total = 15 * 44_100usize;
         for (buf, start, lead) in [
             (64u64, 0u64, 0.0),

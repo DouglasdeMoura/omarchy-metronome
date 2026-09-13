@@ -77,7 +77,7 @@ mod tests {
             bpm: 97.0,
             beats: 7,
             denominator: 8,
-            voices: [2, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2],
+            voices: [2, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 3, 0, 0, 1],
             volume: 0.55,
         };
         save_to(&p, &path).unwrap();

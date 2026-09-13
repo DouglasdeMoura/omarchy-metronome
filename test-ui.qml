@@ -24,20 +24,20 @@ ShellRoot {
         onTriggered: {
             function check(value, reason) { if (!value) throw new Error(reason) }
             check(main.loading, "must wait for backend state")
-            backend.stateReceived(120, 12, 4, [3,1,1,1,1,1,1,1,1,1,1,1], 0.8)
+            backend.stateReceived(120, 16, 4, [3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], 0.8)
             check(!main.loading, "state must release loading gate")
-            for (var i = 0; i < 12; i++) {
+            for (var i = 0; i < 16; i++) {
                 for (var j = 0; j < 4; j++) {
                     var expected = (main.voices[i] + 1) % 4
                     main.cycleVoice(i)
                     check(backend.patched.voices[i] === expected, "voice must reach backend")
-                    check(backend.patched.voices.length === 12, "pattern must retain twelve slots")
+                    check(backend.patched.voices.length === 16, "pattern must retain sixteen slots")
                 }
             }
             backend.readyReceived("silent", 48000, true)
             check(main.errorMessage.length > 0, "silent output must stay visible")
             main.flushSave()
-            check(backend.saved.voices.length === 12, "close must flush pending save")
+            check(backend.saved.voices.length === 16, "close must flush pending save")
             main.tsOpen = true
             function findNumerator(item) {
                 if (item.values && item.values.length > 4) return item
@@ -48,7 +48,7 @@ ShellRoot {
                 return null
             }
             var wheel = findNumerator(main)
-            check(wheel && wheel.values.length === 12, "meter wheel must stop at twelve")
+            check(wheel && wheel.values.length === 16, "meter wheel must stop at sixteen")
             console.log("PASS: frontend voices, loading, silent warning, save, meter limit")
             Qt.quit()
         }

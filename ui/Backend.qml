@@ -71,7 +71,7 @@ Item {
         root.send({ c: "quit" })
     }
 
-    // Sample input: {"t":"state","bpm":120,"beats":4,"denominator":4,"voices":[3,1,1,1,1,1,1,1,1,1,1,1],"volume":0.8}
+    // Sample input: {"t":"state","bpm":120,"beats":4,"denominator":4,"voices":[3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"volume":0.8}
     // Sample input: {"t":"ready","device":"default","rate":44100,"silent":false}
     // Sample input: {"t":"beat","beat":0,"kind":"high"}
     // Sample input: {"t":"stopped","beats":12}

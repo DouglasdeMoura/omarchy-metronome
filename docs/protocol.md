@@ -21,14 +21,15 @@ Every request names its command in `"c"`.
 
 ```json
 {"c":"params","bpm":132,"beats":3,"denominator":8}
-{"c":"save","bpm":132,"beats":4,"denominator":4,"voices":[2,1,1,0,1,1,1,1,1,1,1,1]}
+{"c":"save","bpm":132,"beats":4,"denominator":4,"voices":[2,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1]}
 ```
 
 `voices` is the per-beat pattern: 0 silent, 1 low tone, 2 medium tone,
-3 high tone — twelve slots so a pattern survives a change of meter. Short arrays retain the
-remaining slots; arrays longer than twelve and values outside 0–3 are rejected.
+3 high tone — sixteen slots so a pattern survives a change of meter. Short arrays retain the
+remaining slots (so a twelve-slot file from an older build still loads); arrays longer than
+sixteen and values outside 0–3 are rejected.
 Patches are atomic: an invalid field leaves every setting unchanged.
-The numerator is clamped to 1–12 and tempo to 10–400 BPM.
+The numerator is clamped to 1–16 and tempo to 10–400 BPM.
 `denominator` is the time signature's bottom number: the tick is a 1/d note,
 so its interval is 60/bpm × 4/d; only 1, 2, 4 and 8 are accepted. The legacy
 `subdiv` key (1=4, 2/3/4=8) is still read when `denominator` is absent, and

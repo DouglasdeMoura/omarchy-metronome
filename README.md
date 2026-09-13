@@ -16,7 +16,7 @@ frontend, and a look that follows your Omarchy theme live — change themes with
 - **Tempo at hand.** A slider and ± steppers over 10–400 BPM; above the
   number, the classical marking names what the beat is relative to — Largo,
   Andante, Allegretto, Presto…
-- **Time signature editor.** Click the signature to pick 1–12 counts per bar
+- **Time signature editor.** Click the signature to pick 1–16 counts per bar
   over a 1, 2, 4 or 8 bottom number — 4/4, 6/8, 3/2, 12/8 and friends; the
   tick is the notated value, so 6/8 at 120 ticks on the eighth.
 - **Per-beat voices.** A rectangle for every beat, divided in three bars:

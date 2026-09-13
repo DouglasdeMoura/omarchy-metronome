@@ -17,9 +17,9 @@ Item {
     property int beats: 4
     property int denominator: 4
     // Per-beat voice: 0 silent, 1 low tone, 2 medium tone, 3 high tone.
-    // Twelve slots, one per beat position, so a pattern survives a change of
+    // Sixteen slots, one per beat position, so a pattern survives a change of
     // meter.
-    property var voices: [3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    property var voices: [3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     property int currentBeat: -1
     property int totalBeats: 0
     property string errorMessage: ""
@@ -139,7 +139,7 @@ Item {
             root.bpm = bpm
             root.beats = beats
             root.denominator = denominator
-            if (voices.length === 12) root.voices = voices
+            if (voices.length === 16) root.voices = voices
             hero.text = Math.round(bpm)
             root.loading = false
         }
@@ -244,7 +244,7 @@ Item {
         }
         r.push({ item: numWheel,
                  step: function (d) {
-                     tsPanel.draftBeats = Math.min(12, Math.max(1, tsPanel.draftBeats + d))
+                     tsPanel.draftBeats = Math.min(16, Math.max(1, tsPanel.draftBeats + d))
                      numWheel.select(tsPanel.draftBeats)
                  } })
         r.push({ item: denWheel,
@@ -420,9 +420,9 @@ Item {
             Row {
                 id: meters
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Theme.space(8)
-                // Twelve meters still have to fit the column, so the boxes
-                // give up width before the gaps do.
+                // Sixteen meters still have to fit the column: past twelve
+                // the gaps close up first, then the boxes give up width.
+                spacing: Theme.space(root.beats > 12 ? 4 : 8)
                 readonly property int rectWidth: Math.min(
                     Theme.space(26),
                     Math.floor((Theme.space(320) - (root.beats - 1) * spacing) / root.beats))
@@ -807,7 +807,7 @@ Item {
                         id: numWheel
                         values: {
                             var v = []
-                            for (var i = 1; i <= 12; i++) v.push(i)
+                            for (var i = 1; i <= 16; i++) v.push(i)
                             return v
                         }
                         onPickedChanged: tsPanel.draftBeats = picked
