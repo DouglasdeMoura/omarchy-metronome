@@ -229,19 +229,6 @@ Item {
 
     function rebuildDialogRing() {
         var r = []
-        for (var i = 0; i < presetsRepeater.count; i++) {
-            (function (idx) {
-                var it = presetsRepeater.itemAt(idx)
-                if (it) r.push({
-                    item: it,
-                    activate: function () { it.activatePreset() },
-                    step: function (d) {
-                        var j = Math.min(presetsRepeater.count - 1, Math.max(0, idx + d))
-                        if (j !== idx && presetsRepeater.itemAt(j)) presetsRepeater.itemAt(j).activatePreset()
-                    }
-                })
-            })(i)
-        }
         r.push({ item: numWheel,
                  step: function (d) {
                      tsPanel.draftBeats = Math.min(16, Math.max(1, tsPanel.draftBeats + d))
@@ -779,47 +766,6 @@ Item {
                     spacing: Theme.space(12)
                     topPadding: Theme.space(12)
                     bottomPadding: Theme.space(12)
-
-                    // The common meters, one click each.
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: Theme.space(5)
-
-                        Repeater {
-                            id: presetsRepeater
-                            model: ["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "12/8"]
-
-                            Rectangle {
-                                readonly property var parts: modelData.split("/")
-                                readonly property bool chosen: tsPanel.draftBeats === +parts[0]
-                                                               && tsPanel.draftDenominator === +parts[1]
-                                width: presetLabel.implicitWidth + Theme.space(12)
-                                height: Theme.space(24)
-                                color: chosen ? Qt.alpha(Theme.color.accent, 0.25) : Theme.color.lineSoft
-                                border.width: chosen ? 2 : 1
-                                border.color: chosen ? Theme.color.accent : Theme.color.line
-
-                                Text {
-                                    id: presetLabel
-                                    anchors.centerIn: parent
-                                    text: modelData
-                                    color: parent.chosen ? Theme.color.accent : Theme.color.foreground
-                                    font.family: Theme.font.family
-                                    font.pixelSize: Theme.font.caption
-                                }
-
-                                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                TapHandler {
-                                    onTapped: {
-                                        tsPanel.draftBeats = +parent.parts[0]
-                                        tsPanel.draftDenominator = +parent.parts[1]
-                                        numWheel.select(tsPanel.draftBeats)
-                                        denWheel.select(tsPanel.draftDenominator)
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     // The wheels: drag, scroll, or click; the middle is the draft.
                     Row {
