@@ -497,7 +497,7 @@ Item {
                         id: hero
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: Math.round(root.bpm)
-                        color: root.running ? Theme.color.accent : Theme.color.foreground
+                        color: Theme.color.foreground
                         selectionColor: Qt.alpha(Theme.color.accent, 0.35)
                         selectedTextColor: Theme.color.background
                         font.family: Theme.font.family
