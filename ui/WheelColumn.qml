@@ -21,8 +21,10 @@ ListView {
 
     // Centre the highlight band and snap to it — the whole wheel trick. The
     // header and footer are the empty space that lets the first and last
-    // value reach the middle.
-    highlightRangeMode: ListView.ApplyRange
+    // value reach the middle. StrictlyEnforceRange is what makes a scroll
+    // or a drag a pick: whatever the view settles on in the band becomes
+    // the current item, no click needed.
+    highlightRangeMode: ListView.StrictlyEnforceRange
     preferredHighlightBegin: (height - cell) / 2
     preferredHighlightEnd: preferredHighlightBegin + cell
     snapMode: ListView.SnapToItem
