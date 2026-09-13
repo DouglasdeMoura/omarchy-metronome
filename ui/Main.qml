@@ -595,8 +595,8 @@ Item {
             }
 
             // --- the meter and tap tempo: two equal buttons under the
-            // transport, the steppers' height so the transport alone stands
-            // tall; the meter's frame lights while its editor is open ---
+            // transport, the steppers' height and fill so the transport alone
+            // stands out; the meter's ink lights while its editor is open ---
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Theme.space(12)
@@ -607,6 +607,8 @@ Item {
                     height: Theme.space(36)
                     label: root.beats + "/" + root.denominator
                     pixelSize: Theme.font.body
+                    framed: false
+                    fillColor: Theme.color.lineSoft
                     weight: Font.DemiBold
                     primary: root.tsOpen
                     onActivated: {
@@ -622,6 +624,8 @@ Item {
                     height: Theme.space(36)
                     label: "Tap"
                     pixelSize: Theme.font.body
+                    framed: false
+                    fillColor: Theme.color.lineSoft
                     onActivated: root.tap()
                 }
             }
