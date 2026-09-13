@@ -30,6 +30,9 @@ PULSE_SILENT=1 ./target/release/pulse --backend < lines-of-json
   params are read per click, so every change lands at the next boundary.
   Events go out one channel; the out thread prints them. No audio device
   means the silent clock takes over and `ready` says `silent: true`.
+  The stream never carries digital silence: a -74 dBFS noise floor runs
+  under everything, because Bluetooth earbuds sleep on silence and eat the
+  next tick. Tests bound quiet by `FLOOR_AMP`, never by zero.
 - `src/json.rs` — hand-rolled json (parse + render) since the backend is
   std-only. cpal is the single dependency, and the only one planned.
 - `ui/Theme.qml` — reads `~/.local/state/omarchy/current/theme/{colors,shell}.toml`

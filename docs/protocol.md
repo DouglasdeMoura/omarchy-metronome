@@ -69,6 +69,14 @@ the next output iteration coalesce to their final desired state; toggles include
 pending requests. When a meter shrinks, the next position wraps into the new bar.
 A click keeps its voice and volume until its tail ends.
 
+Under every click, and under the silence between them, the output stream
+carries a keep-alive floor: white noise at -74 dBFS, not scaled by
+`volume`. A metronome is mostly silence, and a link that sees digital
+silence goes to sleep: Bluetooth earbuds gate their amplifier a second or
+so after the last non-zero sample and take a few hundred milliseconds to
+wake, which eats a 55 ms tick whole. The floor is far under any device's
+own noise. The silent clock has no samples and no floor.
+
 If a live audio stream fails, the backend reports an error and another
 `ready` with `silent: true`. If playback was requested, the silent clock
 starts a new run from beat zero. `hello` reports the current output.

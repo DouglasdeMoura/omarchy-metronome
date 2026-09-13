@@ -247,6 +247,16 @@ fn click_len(spec: &ClickSpec, sr: f64) -> usize {
     (spec.dur as f64 * sr).ceil() as usize
 }
 
+// The keep-alive floor: white noise at -74 dBFS under everything the output
+// stream carries, clicks or none, armed or not. A metronome is mostly
+// silence, and a link that sees digital silence goes to sleep: Bluetooth
+// earbuds gate their amplifier a second or so after the last non-zero
+// sample and take a few hundred milliseconds to wake, so a 55 ms tick every
+// other beat lands on a sleeping amplifier and is never heard, sometimes for
+// bars at a time. The floor is far under any device's own noise and is not
+// scaled by volume, because its listener is the hardware, not the player.
+const FLOOR_AMP: f32 = 2.0e-4;
+
 // One tick of a x/d signature: a quarter at d=4, an eighth at d=8, a whole
 // note at d=1.
 fn interval_frames(bpm: f64, denominator: u32, sr: f64) -> f64 {
@@ -275,6 +285,8 @@ struct Timeline {
     click_len: usize,
     gain: f32,
     spec: ClickSpec,
+    // The floor's xorshift state; never zero.
+    noise: u32,
 }
 
 impl Timeline {
@@ -288,6 +300,7 @@ impl Timeline {
             click_len: 0,
             gain: 0.0,
             spec: click_spec(Kind::Low),
+            noise: 0x9E37_79B9,
         }
     }
 
@@ -360,13 +373,26 @@ impl Timeline {
         }
     }
 
+    // One output sample: the running click, if any, over the floor.
     fn sample(&mut self, sr: f64) -> f32 {
+        let floor = self.floor();
         if self.click_pos >= self.click_len {
-            return 0.0;
+            return floor;
         }
         let sample = click_sample(&self.spec, self.click_pos, sr) * self.gain;
         self.click_pos += 1;
-        sample
+        sample + floor
+    }
+
+    // Uniform white noise in ±FLOOR_AMP from a 32-bit xorshift: no
+    // allocation, no syscall, nothing the audio callback may not do.
+    fn floor(&mut self) -> f32 {
+        let mut x = self.noise;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        self.noise = x;
+        (x as f32 / u32::MAX as f32 * 2.0 - 1.0) * FLOOR_AMP
     }
 
     // The silent clock's shape of the same loop: no samples, only the due
@@ -913,7 +939,7 @@ mod tests {
                                 assert!(samples.as_chunks::<2>().0.iter().all(|s| s[0] == s[1]));
                                 let peak = samples.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
                                 if voice == 0 {
-                                    assert_eq!(peak, 0.0);
+                                    assert!(peak <= FLOOR_AMP, "a muted beat is floor alone");
                                 } else {
                                     assert!(peak > 0.5 && peak <= 1.0);
                                 }
@@ -957,7 +983,7 @@ mod tests {
         assert!(tail.iter().any(|x| x.abs() > 0.1));
         let mut next = vec![0.0; 24_000];
         tl.mix_into(&mut next, 1, 128, &p, SR, &mut events);
-        assert!(next[24_000 - 128..].iter().all(|x| *x == 0.0));
+        assert!(next[24_000 - 128..].iter().all(|x| x.abs() <= FLOOR_AMP));
     }
 
     #[test]
@@ -1102,7 +1128,7 @@ mod tests {
         tl.mix_into(&mut buf, 2, 0, &p, SR, &mut events);
         assert_eq!(events.len(), 1);
         assert!(
-            buf.iter().any(|s| *s != 0.0),
+            buf.iter().any(|s| s.abs() > FLOOR_AMP),
             "the high click is in the first buffer (its own sample 0 is still attack-silent)"
         );
         let mut peak = 0.0f32;
@@ -1114,7 +1140,7 @@ mod tests {
             }
         }
         // The click is 70 ms = 3360 samples; 10 buffers of 64 only reach 640.
-        assert!(peak > 0.0, "the click continues into later buffers");
+        assert!(peak > FLOOR_AMP, "the click continues into later buffers");
     }
 
     #[test]
@@ -1127,7 +1153,41 @@ mod tests {
         let mut buf = vec![0.0f32; 4800];
         tl.mix_into(&mut buf, 1, 0, &p, SR, &mut events);
         assert!(events.is_empty());
-        assert!(buf.iter().all(|s| *s == 0.0));
+        assert!(buf.iter().all(|s| s.abs() <= FLOOR_AMP), "no click after disarm");
+        assert!(buf.iter().any(|s| *s != 0.0), "the floor still runs after disarm");
+    }
+
+    #[test]
+    fn the_link_never_hears_digital_silence() {
+        // The reported pattern: nothing on one and three, a low tick on two
+        // and four at 110, so the ticks stand over a second apart. Every
+        // 10 ms window between them carries the floor and nothing louder.
+        let mut p = params(110.0, 4, 4);
+        p.voices = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+        let mut tl = Timeline::new();
+        tl.arm(0, 0.08, SR);
+        let mut buf = vec![0.0f32; 8 * SR as usize];
+        let mut events = Vec::new();
+        tl.mix_into(&mut buf, 1, 0, &p, SR, &mut events);
+        let window = SR as usize / 100;
+        let mut quiet = 0;
+        for chunk in buf.chunks(window) {
+            let peak = chunk.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+            assert!(peak > 0.0, "a window of digital silence");
+            if peak <= FLOOR_AMP {
+                quiet += 1;
+            }
+        }
+        // Eight seconds hold about seven low ticks of 55 ms: nearly every
+        // window is floor alone, and the floor is what keeps the link awake.
+        assert!(quiet > 700, "only {} floor-only windows", quiet);
+        // The floor is a floor: nothing in it reaches -70 dBFS.
+        assert!(buf.iter().all(|s| s.abs() <= 1.0), "sane samples");
+        let floor_peak = buf[..(0.07 * SR) as usize]
+            .iter()
+            .map(|s| s.abs())
+            .fold(0.0f32, f32::max);
+        assert!(floor_peak <= FLOOR_AMP && floor_peak > FLOOR_AMP * 0.5);
     }
 
     #[test]
@@ -1219,7 +1279,10 @@ mod tests {
         let mut events = Vec::new();
         tl.mix_into(&mut buf, 1, 0, &p, SR, &mut events);
         assert_eq!(events.len(), 4, "the timeline still walks every beat");
-        assert!(buf.iter().all(|s| *s == 0.0), "not one sample sounds");
+        assert!(
+            buf.iter().all(|s| s.abs() <= FLOOR_AMP),
+            "not one click sounds, only the floor"
+        );
         assert_eq!(
             events[0],
             Ev::Beat {
@@ -1287,7 +1350,7 @@ mod tests {
             let seg = &out[0..4000];
             let peak = seg.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
             if freq == 0.0 {
-                assert_eq!(peak, 0.0, "silent voice must render no samples");
+                assert!(peak <= FLOOR_AMP, "silent voice must render only the floor");
             } else {
                 assert!(
                     peak > 0.5,
@@ -1384,10 +1447,13 @@ mod tests {
                     .map(|s| s.abs())
                     .fold(0.0f32, f32::max);
                 if beat & 1 == 0 {
-                    assert_eq!(
-                        peak, 0.0,
+                    assert!(
+                        peak <= FLOOR_AMP,
                         "buf={} start={}: muted beat at frame {} sounded (peak {})",
-                        buf, start, i, peak
+                        buf,
+                        start,
+                        i,
+                        peak
                     );
                 } else {
                     assert!(
