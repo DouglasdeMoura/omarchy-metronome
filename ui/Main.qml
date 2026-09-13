@@ -976,7 +976,7 @@ Item {
                             readonly property int count: index + 1
                             readonly property bool chosen: subPanel.draftSubdivision === count
                             width: parent.width
-                            height: Theme.golden(3)
+                            height: Theme.golden(4) - Theme.golden(0)
 
                             Rectangle {
                                 anchors.fill: parent
@@ -986,9 +986,21 @@ Item {
                                      : subHover.hovered ? Theme.color.lineSoft : "transparent"
                             }
 
-                            Text {
+                            // The figure itself, then its name.
+                            NoteFigure {
+                                id: subFigure
                                 anchors.left: parent.left
                                 anchors.leftMargin: Theme.spacing.rowPaddingX
+                                anchors.verticalCenter: parent.verticalCenter
+                                beatValue: root.denominator
+                                division: parent.count
+                                ink: parent.chosen ? Theme.color.accent : Theme.color.foreground
+                            }
+
+                            // The figures take one column, so the names line up.
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: Theme.spacing.rowPaddingX + Theme.golden(4) + Theme.spacing.gap
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: root.subdivisionNames[root.denominator][index]
                                 color: parent.chosen ? Theme.color.accent : Theme.color.foreground
