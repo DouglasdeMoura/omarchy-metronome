@@ -586,16 +586,16 @@ Item {
                 }
             }
 
-            // --- the meter and tap tempo: two equal buttons under the
-            // transport, the steppers' height and fill so the transport alone
-            // stands out; the meter's ink lights while its editor is open ---
+            // --- the meter and tap tempo: two equal golden rectangles under
+            // the transport, the steppers' height and fill so the transport
+            // alone stands out; the meter's ink lights while its editor is open ---
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Theme.space(12)
 
                 DialogButton {
                     id: tsButton
-                    width: Theme.space(84)
+                    width: Math.round(height * 1.618)
                     height: Theme.space(36)
                     label: root.beats + "/" + root.denominator
                     pixelSize: Theme.font.body
@@ -612,7 +612,7 @@ Item {
 
                 DialogButton {
                     id: tapButton
-                    width: Theme.space(84)
+                    width: Math.round(height * 1.618)
                     height: Theme.space(36)
                     label: "Tap"
                     pixelSize: Theme.font.body
