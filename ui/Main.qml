@@ -443,6 +443,16 @@ Item {
                             width: meters.barWidth
                             height: meters.height
 
+                            // The slot the bar fills: a faint column the full
+                            // height a bar can reach, so an empty beat is
+                            // still visibly a thing to press, and it lifts
+                            // under the pointer.
+                            Rectangle {
+                                width: parent.width
+                                height: meters.barArea
+                                color: hover.hovered ? Theme.color.line : Theme.color.lineSoft
+                            }
+
                             Rectangle {
                                 anchors.bottom: parent.top
                                 anchors.bottomMargin: -meters.barArea
@@ -463,7 +473,7 @@ Item {
                                 font.pixelSize: Theme.font.caption
                             }
 
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: root.cycleVoice(index) }
                         }
                     }
