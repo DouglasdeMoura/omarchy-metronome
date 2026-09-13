@@ -400,82 +400,55 @@ Item {
             x: (parent.width - width) / 2
             y: Math.max(Theme.space(16), (parent.height - height) / 2)
 
-            // --- per-beat voices, on top: click to raise ---
-            // One bar per beat rising from a shared baseline, a third, two
-            // thirds or full for the low, medium and high tick; silence is a
-            // tick on the line. The downbeat carries the accent at rest, the
-            // playing beat carries it while the metronome runs.
-            Item {
+            // --- per-beat voices, on top of the circle: click to raise ---
+            // Empty is silence; one, two or three filled bars are the low,
+            // medium and high tick.
+            Row {
                 id: meters
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: metersRow.width
-                height: barArea + Theme.space(4) + Theme.font.caption + Theme.space(4)
+                // Sixteen meters still have to fit the column: past twelve
+                // the gaps close up first, then the boxes give up width.
+                spacing: Theme.space(root.beats > 12 ? 4 : 8)
+                readonly property int rectWidth: Math.min(
+                    Theme.space(26),
+                    Math.floor((Theme.space(320) - (root.beats - 1) * spacing) / root.beats))
 
-                readonly property int barArea: Theme.space(40)
-                // Sixteen bars still have to fit the column: past twelve the
-                // gaps close up first, then the bars give up width.
-                readonly property int gap: Theme.space(root.beats > 12 ? 6 : 10)
-                readonly property int barWidth: Math.min(
-                    Theme.space(22),
-                    Math.floor((Theme.space(320) - (root.beats - 1) * gap) / root.beats))
+                Repeater {
+                    id: metersRepeater
+                    model: root.beats
 
-                Rectangle {
-                    id: baseline
-                    y: meters.barArea
-                    width: parent.width
-                    height: Theme.spacing.hairline
-                    color: Theme.color.muted
-                }
+                    Rectangle {
+                        id: pick
+                        readonly property int voice: root.voices[index]
+                        readonly property bool isNow: root.running && root.currentBeat === index
+                        width: meters.rectWidth
+                        height: Theme.space(38)
+                        radius: 0
+                        color: "transparent"
+                        border.width: isNow ? 2 * Theme.spacing.hairline : Theme.spacing.hairline
+                        border.color: isNow ? Theme.color.accent : Theme.color.muted
 
-                Row {
-                    id: metersRow
-                    spacing: meters.gap
+                        // The bars stack from the bottom, so the fill reads
+                        // as a level: one bar low, three high.
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: Theme.space(1)
 
-                    Repeater {
-                        id: metersRepeater
-                        model: root.beats
+                            Repeater {
+                                model: 3
 
-                        Item {
-                            id: pick
-                            readonly property int voice: root.voices[index]
-                            readonly property bool isNow: root.running && root.currentBeat === index
-                            readonly property bool lit: root.running ? isNow : index === 0
-                            width: meters.barWidth
-                            height: meters.height
-
-                            // The slot the bar fills: a faint column the full
-                            // height a bar can reach, so an empty beat is
-                            // still visibly a thing to press, and it lifts
-                            // under the pointer.
-                            Rectangle {
-                                width: parent.width
-                                height: meters.barArea
-                                color: hover.hovered ? Theme.color.line : Theme.color.lineSoft
+                                Rectangle {
+                                    readonly property int fillOrder: 2 - index
+                                    width: pick.width - Theme.space(8)
+                                    height: (pick.height - Theme.space(8)) / 3
+                                    radius: 0
+                                    color: fillOrder < pick.voice ? Theme.color.accent : Theme.color.lineSoft
+                                }
                             }
-
-                            Rectangle {
-                                anchors.bottom: parent.top
-                                anchors.bottomMargin: -meters.barArea
-                                width: parent.width
-                                height: pick.voice === 0 ? 2 * Theme.spacing.hairline
-                                                         : Math.round(meters.barArea * pick.voice / 3)
-                                color: pick.lit ? Theme.color.accent
-                                     : pick.voice === 0 ? Theme.color.muted
-                                     : Theme.color.foreground
-                            }
-
-                            Text {
-                                anchors.bottom: parent.bottom
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: index + 1
-                                color: pick.isNow ? Theme.color.foreground : Theme.color.muted
-                                font.family: Theme.font.family
-                                font.pixelSize: Theme.font.caption
-                            }
-
-                            HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: root.cycleVoice(index) }
                         }
+
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: root.cycleVoice(index) }
                     }
                 }
             }
