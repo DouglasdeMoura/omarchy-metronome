@@ -414,7 +414,7 @@ Item {
                 readonly property int barArea: Theme.space(40)
                 // Sixteen bars still have to fit the column: past twelve the
                 // gaps close up first, then the bars give up width.
-                readonly property int gap: Theme.space(root.beats > 12 ? 8 : 14)
+                readonly property int gap: Theme.space(root.beats > 12 ? 6 : 10)
                 readonly property int barWidth: Math.min(
                     Theme.space(22),
                     Math.floor((Theme.space(320) - (root.beats - 1) * gap) / root.beats))
