@@ -8,7 +8,7 @@ import QtQuick
 Item {
     id: root
 
-    signal stateReceived(real bpm, int beats, int denominator, var voices, real volume)
+    signal stateReceived(real bpm, int beats, int denominator, var voices, real volume, int subdivision)
     signal readyReceived(string device, int rate, bool silent)
     signal started()
     signal beat(int beat, string kind)
@@ -71,7 +71,7 @@ Item {
         root.send({ c: "quit" })
     }
 
-    // Sample input: {"t":"state","bpm":120,"beats":4,"denominator":4,"voices":[3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"volume":0.8}
+    // Sample input: {"t":"state","bpm":120,"beats":4,"denominator":4,"volume":0.8,"subdivision":1,"voices":[3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]}
     // Sample input: {"t":"ready","device":"default","rate":44100,"silent":false}
     // Sample input: {"t":"beat","beat":0,"kind":"high"}
     // Sample input: {"t":"stopped","beats":12}
@@ -90,7 +90,7 @@ Item {
         }
         if (message.t === "state") {
             root.stateReceived(message.bpm, message.beats, message.denominator,
-                               message.voices || [], message.volume)
+                               message.voices || [], message.volume, message.subdivision || 1)
         } else if (message.t === "ready") {
             root.readyReceived(message.device || "", message.rate || 0, message.silent === true)
         } else if (message.t === "started") {

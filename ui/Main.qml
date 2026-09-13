@@ -24,8 +24,19 @@ Item {
     property string errorMessage: ""
 
     property var tapTimes: []
+    property int subdivision: 1
     property bool tsOpen: false
+    property bool subOpen: false
     property bool keysOpen: false
+
+    // What a beat splits into, named for the note the signature's bottom
+    // makes the beat: one row per subdivision the dialog offers.
+    readonly property var subdivisionNames: ({
+        1: ["Whole", "Halves", "Triplets", "Quarters"],
+        2: ["Half", "Quarters", "Triplets", "Eighths"],
+        4: ["Quarter", "Eighths", "Triplets", "Sixteenths"],
+        8: ["Eighth", "Sixteenths", "Triplets", "Thirty-seconds"]
+    })
 
     // The classical markings, as bands: what the beat is relative to. The
     // bounds are the usual metronome tables, one band per name.
@@ -71,7 +82,7 @@ Item {
 
     function pushParams() {
         if (!root.backend || root.loading) return
-        root.backend.params({ bpm: root.bpm, beats: root.beats, denominator: root.denominator, voices: root.voices })
+        root.backend.params({ bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, voices: root.voices })
     }
 
     function pushSave() {
@@ -83,7 +94,7 @@ Item {
         if (!saveTimer.running || root.loading) return
         saveTimer.stop()
         root.backend.save({
-            bpm: root.bpm, beats: root.beats, denominator: root.denominator, voices: root.voices
+            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, voices: root.voices
         })
     }
 
@@ -91,7 +102,7 @@ Item {
         id: saveTimer
         interval: 500
         onTriggered: root.backend.save({
-            bpm: root.bpm, beats: root.beats, denominator: root.denominator, voices: root.voices
+            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, voices: root.voices
         })
     }
 
@@ -108,6 +119,14 @@ Item {
         if (!root.tsOpen) tabbing = false
     }
     onDenominatorChanged: { pushParams(); pushSave() }
+    onSubdivisionChanged: { pushParams(); pushSave() }
+    onSubOpenChanged: {
+        root.focusIndex = -1
+        root.rebuildRing()
+        if (root.subOpen && root.tabbing) root.focusIndex = 0
+        root.updateFocusFrame()
+        if (!root.subOpen) tabbing = false
+    }
     onVoicesChanged: { pushParams(); pushSave() }
 
     // Click a beat rectangle to raise its fill: silent, low, medium, high.
@@ -134,11 +153,12 @@ Item {
     Connections {
         target: root.backend
 
-        function onStateReceived(bpm, beats, denominator, voices, volume) {
+        function onStateReceived(bpm, beats, denominator, voices, volume, subdivision) {
             root.loading = true
             root.bpm = bpm
             root.beats = beats
             root.denominator = denominator
+            root.subdivision = subdivision || 1
             if (voices.length === 16) root.voices = voices
             hero.text = Math.round(bpm)
             root.loading = false
@@ -200,6 +220,7 @@ Item {
 
     function rebuildRing() {
         if (tsOpen) rebuildDialogRing()
+        else if (subOpen) rebuildSubRing()
         else rebuildMainRing()
         if (focusIndex >= ring.length) focusIndex = -1
         updateFocusFrame()
@@ -221,6 +242,29 @@ Item {
         r.push({ item: play, activate: function () { root.backend.toggle() } })
         r.push({ item: tsButton, activate: function () { root.tsOpen = true } })
         r.push({ item: tapButton, activate: function () { root.tap() } })
+        r.push({ item: subButton, activate: function () { root.subOpen = true } })
+        ring = r
+    }
+
+    function rebuildSubRing() {
+        var r = []
+        for (var i = 0; i < subRowsRepeater.count; i++) {
+            (function (idx) {
+                var it = subRowsRepeater.itemAt(idx)
+                if (it) r.push({
+                    item: it,
+                    activate: function () { subPanel.draftSubdivision = idx + 1 },
+                    step: function (d) {
+                        subPanel.draftSubdivision = Math.min(4, Math.max(1, subPanel.draftSubdivision + d))
+                    }
+                })
+            })(i)
+        }
+        r.push({ item: subCancelBtn, activate: function () { root.subOpen = false } })
+        r.push({ item: subOkBtn, activate: function () {
+            root.subdivision = subPanel.draftSubdivision
+            root.subOpen = false
+        } })
         ring = r
     }
 
@@ -285,13 +329,14 @@ Item {
             return
         }
 
-        // The dialog owns the keyboard while it is open.
-        if (root.tsOpen) {
+        // A dialog owns the keyboard while it is open.
+        if (root.tsOpen || root.subOpen) {
             if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
                 root.cycleFocus(event.modifiers & Qt.ShiftModifier)
                 event.accepted = true
             } else if (event.key === Qt.Key_Escape) {
                 root.tsOpen = false
+                root.subOpen = false
                 event.accepted = true
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
                 var eOk = root.currentEntry()
@@ -670,6 +715,23 @@ Item {
                         fillColor: Theme.color.lineSoft
                         onActivated: root.tap()
                     }
+
+                    // The subdivision: ticks per beat, its editor over all.
+                    DialogButton {
+                        id: subButton
+                        width: Theme.golden(4)
+                        height: Theme.golden(3)
+                        label: "÷" + root.subdivision
+                        pixelSize: Theme.font.body
+                        framed: false
+                        fillColor: Theme.color.lineSoft
+                        primary: root.subOpen
+                        onActivated: {
+                            root.subOpen = !root.subOpen
+                            root.focusIndex = -1
+                            root.rebuildRing()
+                        }
+                    }
                 }
             }
 
@@ -839,6 +901,145 @@ Item {
             }
 
     }
+
+        // --- the subdivision editor, over everything while open ---
+        // One row per way the beat can split; ok commits the draft, cancel
+        // or a click outside throws it away.
+        MouseArea {
+            anchors.fill: parent
+            visible: root.subOpen
+            onClicked: root.subOpen = false
+        }
+
+        Rectangle {
+            id: subPanel
+
+            property int draftSubdivision: root.subdivision
+
+            anchors.centerIn: parent
+            visible: root.subOpen
+            width: Theme.space(296)
+            height: subColumn.implicitHeight + 2 * Theme.spacing.rowPaddingX
+            color: Theme.color.surface
+            border.width: Theme.spacing.hairline
+            border.color: Theme.color.muted
+            radius: Theme.cornerRadius
+
+            MouseArea { anchors.fill: parent }
+
+            onVisibleChanged: {
+                if (!visible) {
+                    root.forceActiveFocus()
+                    root.focusIndex = -1
+                    root.rebuildRing()
+                    return
+                }
+                draftSubdivision = root.subdivision
+            }
+
+            Column {
+                id: subColumn
+                width: parent.width
+                anchors.top: parent.top
+                anchors.topMargin: Theme.spacing.rowPaddingX
+                spacing: 0
+
+                Text {
+                    width: parent.width
+                    leftPadding: Theme.spacing.rowPaddingX
+                    rightPadding: Theme.spacing.rowPaddingX
+                    bottomPadding: Theme.spacing.gap
+                    text: "SUBDIVISION"
+                    color: Theme.color.muted
+                    font.family: Theme.font.family
+                    font.pixelSize: Theme.font.caption
+
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: Theme.spacing.hairline
+                        color: Theme.color.muted
+                        opacity: 0.4
+                    }
+                }
+
+                Column {
+                    width: parent.width
+                    topPadding: Theme.space(6)
+                    bottomPadding: Theme.space(12)
+
+                    Repeater {
+                        id: subRowsRepeater
+                        model: 4
+
+                        Item {
+                            readonly property int count: index + 1
+                            readonly property bool chosen: subPanel.draftSubdivision === count
+                            width: parent.width
+                            height: Theme.golden(3)
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.leftMargin: Theme.spacing.gap
+                                anchors.rightMargin: Theme.spacing.gap
+                                color: parent.chosen ? Qt.alpha(Theme.color.accent, 0.12)
+                                     : subHover.hovered ? Theme.color.lineSoft : "transparent"
+                            }
+
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: Theme.spacing.rowPaddingX
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.subdivisionNames[root.denominator][index]
+                                color: parent.chosen ? Theme.color.accent : Theme.color.foreground
+                                font.family: Theme.font.family
+                                font.pixelSize: Theme.font.body
+                            }
+
+                            Text {
+                                anchors.right: parent.right
+                                anchors.rightMargin: Theme.spacing.rowPaddingX
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: parent.count === 1 ? "the beat" : parent.count + " per beat"
+                                color: Theme.color.muted
+                                font.family: Theme.font.family
+                                font.pixelSize: Theme.font.caption
+                            }
+
+                            HoverHandler { id: subHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: subPanel.draftSubdivision = parent.count }
+                        }
+                    }
+                }
+
+                Item {
+                    width: parent.width
+                    height: Math.max(subCancelBtn.height, subOkBtn.height)
+
+                    Row {
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.spacing.rowPaddingX
+                        spacing: Theme.spacing.gap
+
+                        DialogButton {
+                            id: subCancelBtn
+                            label: "Cancel"
+                            onActivated: root.subOpen = false
+                        }
+
+                        DialogButton {
+                            id: subOkBtn
+                            label: "OK"
+                            primary: true
+                            onActivated: {
+                                root.subdivision = subPanel.draftSubdivision
+                                root.subOpen = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // --- the keys sheet: ? opens it, esc, ? or the x closes it ---
         // The same card as the time signature editor, without actions: the

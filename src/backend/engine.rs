@@ -17,6 +17,10 @@ pub struct Params {
     // 4 is the classic metronome.
     pub denominator: u32,
     pub volume: f32,
+    // Ticks per beat: 1 is the beat alone, 2 splits it in halves, 3 in
+    // triplets, 4 in quarters. The extra ticks are a lighter voice, and a
+    // muted beat keeps its subdivisions muted too.
+    pub subdivision: u32,
     // Per-beat voice, one entry per beat position, BEATS_MAX long: 0 silent,
     // 1 low tone, 2 medium tone, 3 high tone. Positions past `beats` are
     // remembered, so a pattern survives a temporary change of meter.
@@ -36,6 +40,7 @@ impl Default for Params {
             beats: 4,
             denominator: 4,
             volume: 0.8,
+            subdivision: 1,
             // The classic metronome: high on the one, low on the rest.
             voices: {
                 let mut v = [VOICE_LOW; BEATS_MAX as usize];
@@ -50,6 +55,8 @@ pub const BPM_MIN: f64 = 10.0;
 pub const BPM_MAX: f64 = 400.0;
 pub const BEATS_MIN: u32 = 1;
 pub const BEATS_MAX: u32 = 16;
+pub const SUBDIVISION_MIN: u32 = 1;
+pub const SUBDIVISION_MAX: u32 = 4;
 
 impl Params {
     pub fn clamp(&mut self) {
@@ -66,6 +73,7 @@ impl Params {
                 .unwrap_or(4);
         }
         self.volume = self.volume.clamp(0.0, 1.0);
+        self.subdivision = self.subdivision.clamp(SUBDIVISION_MIN, SUBDIVISION_MAX);
     }
 
     pub fn to_json(&self) -> Json {
@@ -78,6 +86,7 @@ impl Params {
             ("beats", Json::int(self.beats as i64)),
             ("denominator", Json::int(self.denominator as i64)),
             ("volume", Json::Num(volume)),
+            ("subdivision", Json::int(self.subdivision as i64)),
             (
                 "voices",
                 Json::Arr(self.voices.iter().map(|v| Json::int(*v as i64)).collect()),
@@ -131,6 +140,15 @@ impl Params {
                 v.as_f64()
                     .ok_or_else(|| "volume must be a number".to_string())? as f32;
         }
+        if let Some(v) = body.get("subdivision") {
+            let s = v
+                .as_u32()
+                .ok_or_else(|| "subdivision must be a whole number".to_string())?;
+            if !(SUBDIVISION_MIN..=SUBDIVISION_MAX).contains(&s) {
+                return Err("subdivision must be 1, 2, 3 or 4".to_string());
+            }
+            self.subdivision = s;
+        }
         if let Some(v) = body.get("voices") {
             let items = match v {
                 Json::Arr(items) => items,
@@ -161,6 +179,9 @@ pub enum Kind {
     High,
     Medium,
     Low,
+    // A tick between beats, the subdivision's own voice: lighter than any
+    // beat, so the beat still reads as the beat.
+    Sub,
     // A beat the user muted: the timeline walks it, no click sounds.
     Off,
 }
@@ -171,6 +192,7 @@ impl Kind {
             Kind::High => "high",
             Kind::Medium => "medium",
             Kind::Low => "low",
+            Kind::Sub => "sub",
             Kind::Off => "off",
         }
     }
@@ -217,6 +239,12 @@ fn click_spec(kind: Kind) -> ClickSpec {
             amp: 0.7,
             dur: 0.055,
             tau: 0.012,
+        },
+        Kind::Sub => ClickSpec {
+            freq: 1300.0,
+            amp: 0.4,
+            dur: 0.035,
+            tau: 0.008,
         },
         // Nothing sounds on a muted beat; the spec is never sampled because
         // fire_click sets the click length to zero.
@@ -280,6 +308,8 @@ struct Timeline {
     armed: bool,
     phase: f64,
     beat: u32,
+    // Which tick of the beat is due: 0 is the beat itself.
+    sub: u32,
     total_beats: u64,
     click_pos: usize,
     click_len: usize,
@@ -295,6 +325,7 @@ impl Timeline {
             armed: false,
             phase: 0.0,
             beat: 0,
+            sub: 0,
             total_beats: 0,
             click_pos: 0,
             click_len: 0,
@@ -310,6 +341,7 @@ impl Timeline {
         self.armed = true;
         self.phase = at as f64 + lead * sr;
         self.beat = 0;
+        self.sub = 0;
         self.total_beats = 0;
         self.click_pos = 0;
         self.click_len = 0;
@@ -323,15 +355,24 @@ impl Timeline {
     }
 
     // Fire the due click: pick its voice from the position the counters name,
-    // move the counters on, and step phase one interval. Params are read per
-    // click, so a bpm or signature change lands at the next boundary, which is
-    // where a musician expects it.
+    // move the counters on, and step phase one tick. Params are read per
+    // click, so a bpm, signature or subdivision change lands at the next
+    // boundary, which is where a musician expects it.
     fn fire_click(&mut self, params: &Params, sr: f64) -> Ev {
         self.beat %= params.beats;
         self.gain = params.volume;
-        let kind = kind_for(self.beat, params);
+        let beat_kind = kind_for(self.beat, params);
+        // A tick between beats takes the subdivision's voice, and none at
+        // all on a muted beat: a beat the player took out stays out.
+        let kind = if self.sub == 0 {
+            beat_kind
+        } else if beat_kind == Kind::Off {
+            Kind::Off
+        } else {
+            Kind::Sub
+        };
         self.spec = click_spec(kind);
-        // A muted beat walks the timeline but samples no click.
+        // A muted tick walks the timeline but samples no click.
         self.click_len = if kind == Kind::Off {
             0
         } else {
@@ -342,9 +383,16 @@ impl Timeline {
             beat: self.beat,
             kind,
         };
-        self.total_beats += 1;
-        self.beat = (self.beat + 1) % params.beats;
-        self.phase += interval_frames(params.bpm, params.denominator, sr);
+        if self.sub == 0 {
+            self.total_beats += 1;
+        }
+        self.sub += 1;
+        if self.sub >= params.subdivision {
+            self.sub = 0;
+            self.beat = (self.beat + 1) % params.beats;
+        }
+        self.phase +=
+            interval_frames(params.bpm, params.denominator, sr) / params.subdivision as f64;
         ev
     }
 
@@ -430,9 +478,12 @@ impl AtomicParams {
         self.version.fetch_add(1, Ordering::SeqCst);
         self.bpm.store(params.bpm.to_bits(), Ordering::SeqCst);
         self.volume.store(params.volume.to_bits(), Ordering::SeqCst);
-        // One word: beats in the low byte, denominator in the next, then
-        // two bits per voice slot — 16 + 32 bits, well inside the u64.
-        let mut pattern = params.beats as u64 | ((params.denominator as u64) << 8);
+        // One word: beats in the low byte, denominator in the next, two
+        // bits per voice slot from 16, and the subdivision at 48 — well
+        // inside the u64.
+        let mut pattern = params.beats as u64
+            | ((params.denominator as u64) << 8)
+            | ((params.subdivision as u64) << 48);
         for (i, voice) in params.voices.iter().enumerate() {
             pattern |= (*voice as u64) << (16 + i * 2);
         }
@@ -456,6 +507,7 @@ impl AtomicParams {
             volume,
             beats: (pattern & 0xff) as u32,
             denominator: ((pattern >> 8) & 0xff) as u32,
+            subdivision: ((pattern >> 48) & 0xf) as u32,
             voices: std::array::from_fn(|i| ((pattern >> (16 + i * 2)) & 3) as u8),
         })
     }
@@ -824,6 +876,7 @@ mod tests {
             beats: BEATS_MAX,
             denominator: 8,
             volume: 0.1234,
+            subdivision: 3,
             voices: [2; BEATS_MAX as usize],
         };
         let shared = Arc::new(AtomicParams::new(&first));
@@ -1476,6 +1529,76 @@ mod tests {
                 start,
                 audible
             );
+        }
+    }
+
+    #[test]
+    fn a_subdivision_ticks_between_the_beats() {
+        // 120 bpm 4/4 in halves: eight ticks a bar, a beat then a sub, the
+        // beat counter moving only on the beat, each tick half an interval.
+        let mut p = params(120.0, 4, 4);
+        p.subdivision = 2;
+        let mut tl = Timeline::new();
+        tl.arm(0, 0.0, SR);
+        let mut events = Vec::new();
+        tl.advance_events_to(SR as u64 - 1, &p, SR, &mut events);
+        let kinds: Vec<_> = events.iter().map(|e| match e {
+            Ev::Beat { beat, kind } => (*beat, *kind),
+            _ => unreachable!(),
+        }).collect();
+        assert_eq!(
+            kinds,
+            vec![(0, Kind::High), (0, Kind::Sub), (1, Kind::Low), (1, Kind::Sub)]
+        );
+        assert_eq!(tl.total_beats, 2, "sub-ticks are not beats");
+        let half = interval_frames(120.0, 4, SR) / 2.0;
+        assert!((tl.phase - 4.0 * half).abs() < 1e-6);
+
+        // Triplets on a muted beat stay muted; the next beat's are heard.
+        let mut p = params(120.0, 2, 4);
+        p.subdivision = 3;
+        p.voices[0] = 0;
+        let mut tl = Timeline::new();
+        tl.arm(0, 0.0, SR);
+        let mut events = Vec::new();
+        tl.advance_events_to(SR as u64 - 1, &p, SR, &mut events);
+        let kinds: Vec<_> = events.iter().map(|e| match e {
+            Ev::Beat { kind, .. } => *kind,
+            _ => unreachable!(),
+        }).collect();
+        assert_eq!(
+            kinds,
+            vec![Kind::Off, Kind::Off, Kind::Off, Kind::Low, Kind::Sub, Kind::Sub]
+        );
+
+        // The sub voice sounds, and under every beat voice.
+        let sub = click_spec(Kind::Sub);
+        assert!(sub.amp > 0.0 && sub.amp < click_spec(Kind::Low).amp);
+    }
+
+    #[test]
+    fn subdivision_rides_the_wire_and_the_atomics() {
+        let mut p = Params::default();
+        p.apply_patch(&Json::parse(r#"{"subdivision":3}"#).unwrap()).unwrap();
+        assert_eq!(p.subdivision, 3);
+        assert!(p.apply_patch(&Json::parse(r#"{"subdivision":5}"#).unwrap()).is_err());
+        assert!(p.apply_patch(&Json::parse(r#"{"subdivision":0}"#).unwrap()).is_err());
+        assert!(p.apply_patch(&Json::parse(r#"{"subdivision":"two"}"#).unwrap()).is_err());
+        assert_eq!(p.subdivision, 3, "a refused patch changes nothing");
+        let rendered = p.to_json().render();
+        assert!(rendered.contains("\"subdivision\":3"), "{}", rendered);
+        // The state line carries it, so the shell learns it at startup.
+        let state = Json::parse(&proto::ev::state(&p)).unwrap();
+        assert_eq!(state.get("subdivision").unwrap().as_u32(), Some(3));
+        // A subdivision from a state file outside the range is forgiven.
+        let mut q = Params::default();
+        q.subdivision = 9;
+        q.clamp();
+        assert_eq!(q.subdivision, SUBDIVISION_MAX);
+        for s in SUBDIVISION_MIN..=SUBDIVISION_MAX {
+            p.subdivision = s;
+            let atomics = AtomicParams::new(&p);
+            assert_eq!(atomics.load().unwrap(), p);
         }
     }
 }

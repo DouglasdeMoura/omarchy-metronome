@@ -15,7 +15,7 @@ Every request names its command in `"c"`.
 | `start` | — | arm the timeline; the first click is one lead-in out |
 | `stop` | — | stop at once; a `stopped` event answers with the beat total |
 | `toggle` | — | start if stopped, stop if running |
-| `params` | any of `bpm`, `beats`, `denominator`, `volume`, `voices` | apply; tempo and signature changes land at the next click, volume at the next click, numeric ranges clamped; invalid types, voices and denominators rejected |
+| `params` | any of `bpm`, `beats`, `denominator`, `subdivision`, `volume`, `voices` | apply; tempo, signature and subdivision changes land at the next click, volume at the next click, numeric ranges clamped; invalid types, voices, denominators and subdivisions rejected |
 | `save` | same fields as `params` | apply and persist to `~/.config/pulse/state.json` |
 | `quit` | — | drain (stop, last events out), then one `quitready` |
 
@@ -23,6 +23,10 @@ Every request names its command in `"c"`.
 {"c":"params","bpm":132,"beats":3,"denominator":8}
 {"c":"save","bpm":132,"beats":4,"denominator":4,"voices":[2,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1]}
 ```
+
+`subdivision` is the number of ticks per beat, 1 to 4: 1 is the beat alone,
+2 halves it, 3 makes triplets, 4 quarters it. The extra ticks are the `sub`
+voice, lighter than any beat; a muted beat keeps its subdivisions muted.
 
 `voices` is the per-beat pattern: 0 silent, 1 low tone, 2 medium tone,
 3 high tone — sixteen slots so a pattern survives a change of meter. Short arrays retain the
@@ -42,10 +46,10 @@ Every event names itself in `"t"`.
 
 | event | fields | meaning |
 | --- | --- | --- |
-| `state` | `bpm`, `beats`, `denominator`, `voices`, `volume` | the loaded parameters, sent at startup and on `hello` |
+| `state` | `bpm`, `beats`, `denominator`, `subdivision`, `voices`, `volume` | the loaded parameters, sent at startup and on `hello` |
 | `ready` | `device`, `rate`, `silent` | the output that will sound; `silent: true` means no device was found and a wall clock drives the visuals |
 | `started` | — | the timeline is armed and the first click is scheduled |
-| `beat` | `beat`, `kind` | one beat position is on the device; `beat` counts from 0, `kind` is `high`, `medium`, `low` or `off` (muted: the visual walks, nothing sounds) |
+| `beat` | `beat`, `kind` | one tick is on the device; `beat` counts from 0, `kind` is `high`, `medium`, `low`, `sub` (a tick between beats, `beat` names the beat it falls in) or `off` (muted: the visual walks, nothing sounds) |
 | `stopped` | `beats` | stopped; `beats` is the total number of beats played this run |
 | `error` | `msg` | a device failed, a patch was refused, a line was unreadable |
 | `quitready` | — | the backend has drained; the window may close |
