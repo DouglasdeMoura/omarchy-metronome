@@ -29,7 +29,7 @@ Singleton {
         foreground: "#F8F8F2",
         accent: "#BD93F9",
         muted: "#6272A4",
-        surface: "#343746",
+        surface: "#21222C",
         deep: "#21222C",
         urgent: "#FF5555",
         success: "#50FA7B"
@@ -73,6 +73,17 @@ Singleton {
         return Math.round(px * spacingScale)
     }
 
+    // Flea's dialog frame tokens at the shell's defaults, so a card here
+    // lines up with a card there: a hairline, a row's side padding, a gap.
+    // The smallest a dialog action gets, Flea's own floor.
+    readonly property int hitMin: 24
+
+    readonly property QtObject spacing: QtObject {
+        readonly property int hairline: root.space(1)
+        readonly property int rowPaddingX: root.space(12)
+        readonly property int gap: root.space(8)
+    }
+
     // The compositor's corner radius, so a window follows the theme the way
     // every other surface on the desktop does; 0 until hyprctl has answered.
     property int cornerRadius: 0
@@ -91,7 +102,9 @@ Singleton {
         root.color.foreground = pick(["foreground"], fallback.foreground)
         root.color.accent = pick(["accent", "purple"], fallback.accent)
         root.color.muted = pick(["muted", "comment"], fallback.muted)
-        root.color.surface = pick(["floating", "background_light", "lighter_background"], fallback.surface)
+        // The dialog card's ground, the keys Flea's Open with card reads in
+        // Flea's own order: the dark ground first, the window's, then selection.
+        root.color.surface = pick(["dark_background", "background", "selection"], fallback.surface)
         root.color.deep = pick(["dark_background", "color0"], fallback.deep)
         root.color.urgent = pick(["red"], fallback.urgent)
         root.color.success = pick(["green"], fallback.success)

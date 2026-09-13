@@ -709,10 +709,11 @@ Item {
             anchors.centerIn: parent
             visible: root.tsOpen
             width: Theme.space(296)
-            height: tsColumn.implicitHeight + Theme.space(36)
+            height: tsColumn.implicitHeight + 2 * Theme.spacing.rowPaddingX
+            // Flea's dialog card: the theme's dark ground behind a muted hairline.
             color: Theme.color.surface
-            border.width: 1
-            border.color: Theme.color.line
+            border.width: Theme.spacing.hairline
+            border.color: Theme.color.muted
 
             // The panel's own click-swallowing surface: a press between the
             // controls belongs to the dialog, never to the cancel-scrim.
@@ -746,131 +747,132 @@ Item {
 
             Column {
                 id: tsColumn
-                anchors.centerIn: parent
-                spacing: Theme.space(12)
+                width: parent.width
+                anchors.top: parent.top
+                anchors.topMargin: Theme.spacing.rowPaddingX
+                spacing: 0
 
+                // Flea's dialog header: the title sits at the card's left
+                // padding on a hairline rule, and the body hangs below it.
                 Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: parent.width
+                    leftPadding: Theme.spacing.rowPaddingX
+                    rightPadding: Theme.spacing.rowPaddingX
+                    bottomPadding: Theme.spacing.gap
                     text: "TIME SIGNATURE"
                     color: Theme.color.muted
                     font.family: Theme.font.family
                     font.pixelSize: Theme.font.caption
+
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: Theme.spacing.hairline
+                        color: Theme.color.muted
+                        opacity: 0.4
+                    }
                 }
 
-                // The common meters, one click each.
-                Row {
+                Column {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Theme.space(5)
+                    spacing: Theme.space(12)
+                    topPadding: Theme.space(12)
+                    bottomPadding: Theme.space(12)
 
-                    Repeater {
-                        id: presetsRepeater
-                        model: ["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "12/8"]
+                    // The common meters, one click each.
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: Theme.space(5)
 
-                        Rectangle {
-                            readonly property var parts: modelData.split("/")
-                            readonly property bool chosen: tsPanel.draftBeats === +parts[0]
-                                                           && tsPanel.draftDenominator === +parts[1]
-                            width: presetLabel.implicitWidth + Theme.space(12)
-                            height: Theme.space(24)
-                            color: chosen ? Qt.alpha(Theme.color.accent, 0.25) : Theme.color.lineSoft
-                            border.width: chosen ? 2 : 1
-                            border.color: chosen ? Theme.color.accent : Theme.color.line
+                        Repeater {
+                            id: presetsRepeater
+                            model: ["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "12/8"]
 
-                            Text {
-                                id: presetLabel
-                                anchors.centerIn: parent
-                                text: modelData
-                                color: parent.chosen ? Theme.color.accent : Theme.color.foreground
-                                font.family: Theme.font.family
-                                font.pixelSize: Theme.font.caption
-                            }
+                            Rectangle {
+                                readonly property var parts: modelData.split("/")
+                                readonly property bool chosen: tsPanel.draftBeats === +parts[0]
+                                                               && tsPanel.draftDenominator === +parts[1]
+                                width: presetLabel.implicitWidth + Theme.space(12)
+                                height: Theme.space(24)
+                                color: chosen ? Qt.alpha(Theme.color.accent, 0.25) : Theme.color.lineSoft
+                                border.width: chosen ? 2 : 1
+                                border.color: chosen ? Theme.color.accent : Theme.color.line
 
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
-                            TapHandler {
-                                onTapped: {
-                                    tsPanel.draftBeats = +parent.parts[0]
-                                    tsPanel.draftDenominator = +parent.parts[1]
-                                    numWheel.select(tsPanel.draftBeats)
-                                    denWheel.select(tsPanel.draftDenominator)
+                                Text {
+                                    id: presetLabel
+                                    anchors.centerIn: parent
+                                    text: modelData
+                                    color: parent.chosen ? Theme.color.accent : Theme.color.foreground
+                                    font.family: Theme.font.family
+                                    font.pixelSize: Theme.font.caption
+                                }
+
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                TapHandler {
+                                    onTapped: {
+                                        tsPanel.draftBeats = +parent.parts[0]
+                                        tsPanel.draftDenominator = +parent.parts[1]
+                                        numWheel.select(tsPanel.draftBeats)
+                                        denWheel.select(tsPanel.draftDenominator)
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                // The wheels: drag, scroll, or click; the middle is the draft.
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Theme.space(6)
+                    // The wheels: drag, scroll, or click; the middle is the draft.
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: Theme.space(6)
 
-                    WheelColumn {
-                        id: numWheel
-                        values: {
-                            var v = []
-                            for (var i = 1; i <= 16; i++) v.push(i)
-                            return v
+                        WheelColumn {
+                            id: numWheel
+                            values: {
+                                var v = []
+                                for (var i = 1; i <= 16; i++) v.push(i)
+                                return v
+                            }
+                            onPickedChanged: tsPanel.draftBeats = picked
                         }
-                        onPickedChanged: tsPanel.draftBeats = picked
-                    }
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "/"
-                        color: Theme.color.muted
-                        font.family: Theme.font.family
-                        font.pixelSize: Theme.font.heading
-                    }
-
-                    WheelColumn {
-                        id: denWheel
-                        values: [1, 2, 4, 8]
-                        onPickedChanged: tsPanel.draftDenominator = picked
-                    }
-                }
-
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Theme.space(10)
-
-                    Rectangle {
-                        id: cancelBtn
-                        width: Theme.space(90)
-                        height: Theme.space(30)
-                        color: tsCancel.pressed ? Qt.alpha(Theme.color.accent, 0.18) : Theme.color.lineSoft
-                        border.width: 1
-                        border.color: Theme.color.line
 
                         Text {
-                            anchors.centerIn: parent
-                            text: "Cancel"
-                            color: Theme.color.foreground
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "/"
+                            color: Theme.color.muted
                             font.family: Theme.font.family
-                            font.pixelSize: Theme.font.bodySmall
+                            font.pixelSize: Theme.font.heading
                         }
 
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
-                        TapHandler { id: tsCancel; onTapped: root.tsOpen = false }
+                        WheelColumn {
+                            id: denWheel
+                            values: [1, 2, 4, 8]
+                            onPickedChanged: tsPanel.draftDenominator = picked
+                        }
                     }
+                }
 
-                    Rectangle {
-                        id: okBtn
-                        width: Theme.space(90)
-                        height: Theme.space(30)
-                        color: tsOk.pressed ? Qt.alpha(Theme.color.accent, 0.8) : Theme.color.accent
+                // Flea's action row: Cancel then the primary, flush with the
+                // card's right padding.
+                Item {
+                    width: parent.width
+                    height: Math.max(cancelBtn.height, okBtn.height)
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: "OK"
-                            color: Theme.color.background
-                            font.family: Theme.font.family
-                            font.pixelSize: Theme.font.bodySmall
-                            font.weight: Font.DemiBold
+                    Row {
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.spacing.rowPaddingX
+                        spacing: Theme.spacing.gap
+
+                        DialogButton {
+                            id: cancelBtn
+                            label: "Cancel"
+                            onActivated: root.tsOpen = false
                         }
 
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
-                        TapHandler {
-                            id: tsOk
-                            onTapped: {
+                        DialogButton {
+                            id: okBtn
+                            label: "OK"
+                            primary: true
+                            onActivated: {
                                 root.beats = tsPanel.draftBeats
                                 root.denominator = tsPanel.draftDenominator
                                 root.tsOpen = false
