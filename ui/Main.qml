@@ -49,8 +49,6 @@ Item {
         return tempoBands.length - 1
     }
     readonly property string tempoName: tempoBands[tempoBand].name
-    readonly property string tempoRange: (tempoBand > 0 ? tempoBands[tempoBand - 1].max + 1 : 10)
-                                         + "\u2013" + Math.min(tempoBands[tempoBand].max, 400) + " bpm"
 
     // The first state line arrives before this item does; until it has been
     // applied, no control pushes its own value back down the wire.
@@ -282,7 +280,6 @@ Item {
         var e = tabbing ? currentEntry() : null
         if (!e || !e.item) { focusFrame.visible = false; return }
         var p = e.item.mapToItem(focusFrame.parent, 0, 0)
-        console.warn("FRAME", focusIndex, "vis", focusFrame.visible, "at", p.x, p.y, "parent", focusFrame.parent, "item", e.item)
         focusFrame.x = p.x - 3
         focusFrame.y = p.y - 3
         focusFrame.width = e.item.width + 6

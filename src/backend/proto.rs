@@ -162,6 +162,6 @@ mod tests {
         assert_eq!(beat.get("kind").unwrap().as_str(), Some("accent"));
         let ready = Json::parse(&ev::ready("default", 44_100, true)).unwrap();
         assert_eq!(ready.get("rate").unwrap().as_u32(), Some(44_100));
-        assert_eq!(ready.get("silent").unwrap().as_bool(), Some(true));
+        assert_eq!(ready.get("silent"), Some(&Json::Bool(true)));
     }
 }

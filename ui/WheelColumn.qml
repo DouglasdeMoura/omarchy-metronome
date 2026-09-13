@@ -9,8 +9,6 @@ ListView {
     property var values: []
     // The value resting in the middle band.
     property int picked: values.length > 0 ? values[0] : 0
-    // The keyboard's wheel: the active one owns the arrow keys.
-    property bool active: false
 
     readonly property int cell: Theme.space(30)
     readonly property int windowHeight: Theme.space(150)
@@ -47,18 +45,9 @@ ListView {
         Qt.callLater(function () { positionViewAtIndex(i, ListView.Center) })
     }
 
-    // Step the pick one value up (positive) or down, clamped to the ends.
-    function step(delta) {
-        var i = values.indexOf(picked)
-        if (i < 0) i = 0
-        i = Math.min(values.length - 1, Math.max(0, i + delta))
-        select(values[i])
-    }
-
     onHeightChanged: positionViewAtIndex(currentIndex, ListView.Center)
 
-    // The middle band: home of the pick, and the keyboard's focus mark when
-    // this wheel is the one the arrows move.
+    // The middle band: home of the pick.
     Item {
         anchors.left: parent.left
         anchors.right: parent.right
@@ -70,7 +59,7 @@ ListView {
             anchors.right: parent.right
             anchors.top: parent.top
             height: 1
-            color: root.active ? Theme.color.accent : Theme.color.lineSoft
+            color: Theme.color.lineSoft
         }
 
         Rectangle {
@@ -78,7 +67,7 @@ ListView {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 1
-            color: root.active ? Theme.color.accent : Theme.color.lineSoft
+            color: Theme.color.lineSoft
         }
     }
 

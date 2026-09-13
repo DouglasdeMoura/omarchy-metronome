@@ -1,5 +1,5 @@
 use crate::json::Json;
-use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
@@ -23,7 +23,6 @@ pub struct Params {
     pub voices: [u8; BEATS_MAX as usize],
 }
 
-pub const VOICE_OFF: u8 = 0;
 pub const VOICE_LOW: u8 = 1;
 pub const VOICE_MEDIUM: u8 = 2;
 pub const VOICE_HIGH: u8 = 3;
@@ -341,9 +340,6 @@ struct Shared {
     pending: AtomicU8,
     running: AtomicBool,
     events: Sender<Ev>,
-    // A virtual frame position the silent clock publishes, so a stop never
-    // waits on a poll interval that outlived its purpose.
-    frame: AtomicU64,
     // The device error callback can fire every buffer; one report is the truth.
     err_reported: AtomicBool,
     // Set by the control thread to end the silent clock.
@@ -381,7 +377,6 @@ fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced
         pending: AtomicU8::new(0),
         running: AtomicBool::new(false),
         events: ev_tx,
-        frame: AtomicU64::new(0),
         err_reported: AtomicBool::new(false),
         shutdown: AtomicBool::new(false),
     });
@@ -659,13 +654,11 @@ mod clock {
                 }
 
                 let wall_frame = (anchor.elapsed().as_secs_f64() * sr) as u64;
-                let until = wall_frame.min(u64::MAX);
                 events.clear();
-                tl.advance_events_to(until, &shared.params_snapshot(), sr, &mut events);
+                tl.advance_events_to(wall_frame, &shared.params_snapshot(), sr, &mut events);
                 for ev in events.drain(..) {
                     shared.send(ev);
                 }
-                shared.frame.store(wall_frame, Ordering::Release);
 
                 // Sleep toward the next click, then spin the last stretch so the
                 // event lands within a few microseconds of its own sample.
@@ -729,7 +722,7 @@ mod tests {
         p.voices[1] = VOICE_MEDIUM;
         assert_eq!(kind_for(1, &p), Kind::Medium);
 
-        p.voices[0] = VOICE_OFF;
+        p.voices[0] = 0; // silent
         assert_eq!(kind_for(0, &p), Kind::Off);
     }
 
@@ -863,7 +856,7 @@ mod tests {
         let body = Json::parse(r#"{"voices":[3,0,2]}"#).unwrap();
         p.apply_patch(&body).unwrap();
         assert_eq!(p.voices[0], VOICE_HIGH);
-        assert_eq!(p.voices[1], VOICE_OFF);
+        assert_eq!(p.voices[1], 0); // silent
         assert_eq!(p.voices[2], VOICE_MEDIUM);
         // A short array leaves the tail as it was.
         assert_eq!(p.voices[3], VOICE_LOW);
@@ -872,7 +865,7 @@ mod tests {
     #[test]
     fn a_muted_beat_walks_the_timeline_without_sound() {
         let mut p = params(120.0, 4, 4);
-        p.voices[1] = VOICE_OFF;
+        p.voices[1] = 0; // silent
         let mut tl = Timeline::new();
         tl.arm(0, 0.0, SR);
         let mut events = Vec::new();
@@ -884,7 +877,7 @@ mod tests {
 
         // Nothing at all is on: every position walks, not one sample sounds.
         let mut p = params(120.0, 4, 4);
-        p.voices = [VOICE_OFF; 12];
+        p.voices = [0; 12]; // all silent
         let mut tl = Timeline::new();
         tl.arm(0, 0.0, SR);
         let mut buf = vec![0.0f32; 96_000];
