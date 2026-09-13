@@ -412,6 +412,11 @@ Item {
                 readonly property int rectWidth: Math.min(
                     Theme.space(26),
                     Math.floor((Theme.space(320) - (root.beats - 1) * spacing) / root.beats))
+                // Each bar is a golden rectangle, lying down; the beat's
+                // height follows from three of them and the gaps between.
+                readonly property int barWidth: rectWidth - Theme.space(8)
+                readonly property int barHeight: Math.round(barWidth / 1.618)
+                readonly property int barGap: Theme.space(2)
 
                 Repeater {
                     id: metersRepeater
@@ -422,7 +427,7 @@ Item {
                         readonly property int voice: root.voices[index]
                         readonly property bool isNow: root.running && root.currentBeat === index
                         width: meters.rectWidth
-                        height: Theme.space(38)
+                        height: 3 * meters.barHeight + 2 * meters.barGap + Theme.space(8)
                         radius: 0
                         color: "transparent"
 
@@ -431,15 +436,15 @@ Item {
                         // playing beat is the one whose empty bars light up.
                         Column {
                             anchors.centerIn: parent
-                            spacing: Theme.space(1)
+                            spacing: meters.barGap
 
                             Repeater {
                                 model: 3
 
                                 Rectangle {
                                     readonly property int fillOrder: 2 - index
-                                    width: pick.width - Theme.space(8)
-                                    height: (pick.height - Theme.space(8)) / 3
+                                    width: meters.barWidth
+                                    height: meters.barHeight
                                     radius: 0
                                     color: fillOrder < pick.voice ? Theme.color.accent
                                          : pick.isNow ? Theme.color.line : Theme.color.lineSoft
