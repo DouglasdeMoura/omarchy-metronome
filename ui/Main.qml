@@ -25,6 +25,7 @@ Item {
 
     property var tapTimes: []
     property bool tsOpen: false
+    property bool keysOpen: false
 
     // The classical markings, as bands: what the beat is relative to. The
     // bounds are the usual metronome tables, one band per name.
@@ -276,6 +277,14 @@ Item {
     }
 
     Keys.onPressed: function (event) {
+        // The keys sheet owns the keyboard while it is open: esc or ? closes
+        // it, and nothing else reaches the instrument underneath.
+        if (root.keysOpen) {
+            if (event.key === Qt.Key_Escape || event.text === "?") root.keysOpen = false
+            event.accepted = true
+            return
+        }
+
         // The dialog owns the keyboard while it is open.
         if (root.tsOpen) {
             if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
@@ -323,7 +332,10 @@ Item {
             }
         }
 
-        if (event.key === Qt.Key_Space) {
+        if (event.text === "?") {
+            root.keysOpen = true
+            event.accepted = true
+        } else if (event.key === Qt.Key_Space) {
             root.backend.toggle()
             root.focusIndex = root.ringIndex(play)
             root.updateFocusFrame()
@@ -653,18 +665,7 @@ Item {
                 }
             }
 
-            Text {
-                width: parent.width
-                text: "space play · arrows tempo · t tap · esc stop"
-                color: Theme.color.muted
-                opacity: 0.7
-                font.family: Theme.font.family
-                font.pixelSize: Theme.font.caption
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-            }
-
-            // Only when something is wrong: the error under the hints, in
+            // Only when something is wrong: the error under the controls, in
             // urgent ink, the one place the window says so.
             Text {
                 width: parent.width
@@ -830,6 +831,123 @@ Item {
             }
 
     }
+
+        // --- the keys sheet: ? opens it, esc, ? or the x closes it ---
+        // The same card as the time signature editor, without actions: the
+        // header carries the close, and a click outside is a close too.
+        MouseArea {
+            anchors.fill: parent
+            visible: root.keysOpen
+            onClicked: root.keysOpen = false
+        }
+
+        Rectangle {
+            id: keysPanel
+            anchors.centerIn: parent
+            visible: root.keysOpen
+            width: Theme.space(296)
+            height: keysColumn.implicitHeight + 2 * Theme.spacing.rowPaddingX
+            color: Theme.color.surface
+            border.width: Theme.spacing.hairline
+            border.color: Theme.color.muted
+            radius: Theme.cornerRadius
+
+            MouseArea { anchors.fill: parent }
+
+            readonly property var bindings: [
+                ["space", "play, stop"],
+                ["↑ ↓", "tempo ±1"],
+                ["shift ↑ ↓", "tempo ±5"],
+                ["pgup pgdn", "tempo ±10"],
+                ["t", "tap tempo"],
+                ["1 2 4 8", "beat unit"],
+                ["esc", "stop"],
+                ["tab", "next control"],
+                ["enter", "press the focused control"],
+                ["ctrl q", "quit"],
+                ["?", "this sheet"]
+            ]
+
+            Column {
+                id: keysColumn
+                width: parent.width
+                anchors.top: parent.top
+                anchors.topMargin: Theme.spacing.rowPaddingX
+                spacing: 0
+
+                Item {
+                    width: parent.width
+                    height: keysTitle.implicitHeight + Theme.spacing.gap
+
+                    Text {
+                        id: keysTitle
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacing.rowPaddingX
+                        anchors.top: parent.top
+                        text: "KEYS"
+                        color: Theme.color.muted
+                        font.family: Theme.font.family
+                        font.pixelSize: Theme.font.caption
+                    }
+
+                    ChromeButton {
+                        glyph: "✕"
+                        glyphSize: Theme.font.bodySmall
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.spacing.gap
+                        anchors.verticalCenter: keysTitle.verticalCenter
+                        width: Theme.space(24)
+                        height: Theme.space(20)
+                        onActivated: root.keysOpen = false
+                    }
+
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: Theme.spacing.hairline
+                        color: Theme.color.muted
+                        opacity: 0.4
+                    }
+                }
+
+                Column {
+                    width: parent.width
+                    topPadding: Theme.space(12)
+                    spacing: Theme.space(6)
+
+                    Repeater {
+                        model: keysPanel.bindings
+
+                        Item {
+                            width: parent.width
+                            height: keyLabel.implicitHeight
+
+                            Text {
+                                id: keyLabel
+                                anchors.left: parent.left
+                                anchors.leftMargin: Theme.spacing.rowPaddingX
+                                width: Theme.space(96)
+                                text: modelData[0]
+                                color: Theme.color.foreground
+                                font.family: Theme.font.family
+                                font.pixelSize: Theme.font.bodySmall
+                            }
+
+                            Text {
+                                anchors.left: keyLabel.right
+                                anchors.right: parent.right
+                                anchors.rightMargin: Theme.spacing.rowPaddingX
+                                text: modelData[1]
+                                color: Theme.color.muted
+                                font.family: Theme.font.family
+                                font.pixelSize: Theme.font.bodySmall
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+                }
+            }
+        }
 }
     // Taps anywhere keep the ring in step with the mouse: the tap is
     // hit-tested against the ring's own controls.
