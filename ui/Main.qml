@@ -416,7 +416,7 @@ Item {
                 // height follows from three of them and the gaps between.
                 readonly property int barWidth: rectWidth - Theme.space(8)
                 readonly property int barHeight: Math.round(barWidth / 1.618)
-                readonly property int barGap: Theme.space(2)
+                readonly property int barGap: Theme.space(4)
 
                 Repeater {
                     id: metersRepeater
