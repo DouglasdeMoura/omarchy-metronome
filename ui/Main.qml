@@ -396,7 +396,11 @@ Item {
         Column {
             id: content
             width: Math.min(parent.width, Theme.space(320))
-            spacing: Theme.space(24)
+            // The vertical rhythm is one ladder, 8 13 21 34, each step phi
+            // of the last: a caption sits 8 from its numeral, the buttons
+            // 21 from the transport they serve, and the three bands, beats,
+            // tempo, transport, stand 34 apart.
+            spacing: Theme.space(34)
             x: (parent.width - width) / 2
             y: Math.max(Theme.space(16), (parent.height - height) / 2)
 
@@ -462,7 +466,7 @@ Item {
             // that sit on its own centre line ---
             Column {
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Theme.space(4)
+                spacing: Theme.space(8)
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -489,11 +493,32 @@ Item {
                         onActivated: root.setBpm(root.bpm - 1)
                     }
 
-                    TextInput {
-                        id: hero
+                    // The numeral's box is the digits' own ink height, not
+                    // the font's line box, so the gaps the column keeps
+                    // around it are the gaps the eye sees. The metrics say
+                    // where the ink sits in the line; the input is shifted
+                    // up by that much and overflows its box freely.
+                    Item {
+                        id: heroBox
                         // Room for four digits at the hero size, so the
                         // steppers hold still while the number changes.
                         width: Theme.space(150)
+                        height: Math.round(digitInk.tightBoundingRect.height)
+
+                        TextMetrics {
+                            id: digitInk
+                            font.family: Theme.font.family
+                            font.pixelSize: Theme.font.hero
+                            font.weight: Font.DemiBold
+                            text: "0123456789"
+                        }
+
+                    TextInput {
+                        id: hero
+                        width: parent.width
+                        // Both rects are baseline-relative: the ink's top
+                        // below the line's top is the difference of the two.
+                        y: -Math.round(digitInk.tightBoundingRect.y - digitInk.boundingRect.y)
                         text: Math.round(root.bpm)
                         color: Theme.color.foreground
                         selectionColor: Qt.alpha(Theme.color.accent, 0.35)
@@ -538,6 +563,7 @@ Item {
                             onClicked: hero.forceActiveFocus()
                         }
                     }
+                    }
 
                     DialogButton {
                         id: bpmPlusBtn
@@ -553,72 +579,79 @@ Item {
                 }
             }
 
-            // --- the transport: the one accent on the view, dead centre.
-            // An outlined circle at rest; solid while the metronome runs ---
-            Rectangle {
-                id: play
-                width: Theme.space(88)
-                height: width
+            // --- the transport band: the play circle, and the meter and tap
+            // beneath it at the ladder's 21 ---
+            Column {
                 anchors.horizontalCenter: parent.horizontalCenter
-                radius: width / 2
-                color: root.running ? Theme.color.accent : "transparent"
-                border.width: 2 * Theme.spacing.hairline
-                border.color: Theme.color.accent
-                scale: playTap.pressed && !Theme.reducedMotion ? 0.96 : 1
+                spacing: Theme.space(21)
 
-                Behavior on scale {
-                    enabled: !Theme.reducedMotion
-                    NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
-                }
+                // --- the transport: the one accent on the view, dead centre.
+                // An outlined circle at rest; solid while the metronome runs ---
+                Rectangle {
+                    id: play
+                    width: Theme.space(88)
+                    height: width
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    radius: width / 2
+                    color: root.running ? Theme.color.accent : "transparent"
+                    border.width: 2 * Theme.spacing.hairline
+                    border.color: Theme.color.accent
+                    scale: playTap.pressed && !Theme.reducedMotion ? 0.96 : 1
 
-                Text {
-                    anchors.centerIn: parent
-                    text: root.running ? "■" : "▶"
-                    color: root.running ? Theme.color.background : Theme.color.accent
-                    font.family: Theme.font.family
-                    font.pixelSize: Theme.font.display
-                }
+                    Behavior on scale {
+                        enabled: !Theme.reducedMotion
+                        NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+                    }
 
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                TapHandler {
-                    id: playTap
-                    onTapped: root.backend.toggle()
-                }
-            }
+                    Text {
+                        anchors.centerIn: parent
+                        text: root.running ? "■" : "▶"
+                        color: root.running ? Theme.color.background : Theme.color.accent
+                        font.family: Theme.font.family
+                        font.pixelSize: Theme.font.display
+                    }
 
-            // --- the meter and tap tempo: two equal golden rectangles under
-            // the transport, the steppers' height and fill so the transport
-            // alone stands out; the meter's ink lights while its editor is open ---
-            Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Theme.space(12)
-
-                DialogButton {
-                    id: tsButton
-                    width: Math.round(height * 1.618)
-                    height: Theme.space(36)
-                    label: root.beats + "/" + root.denominator
-                    pixelSize: Theme.font.body
-                    framed: false
-                    fillColor: Theme.color.lineSoft
-                    weight: Font.DemiBold
-                    primary: root.tsOpen
-                    onActivated: {
-                        root.tsOpen = !root.tsOpen
-                        root.focusIndex = -1
-                        root.rebuildRing()
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    TapHandler {
+                        id: playTap
+                        onTapped: root.backend.toggle()
                     }
                 }
 
-                DialogButton {
-                    id: tapButton
-                    width: Math.round(height * 1.618)
-                    height: Theme.space(36)
-                    label: "Tap"
-                    pixelSize: Theme.font.body
-                    framed: false
-                    fillColor: Theme.color.lineSoft
-                    onActivated: root.tap()
+                // --- the meter and tap tempo: two equal golden rectangles under
+                // the transport, the steppers' height and fill so the transport
+                // alone stands out; the meter's ink lights while its editor is open ---
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: Theme.space(12)
+
+                    DialogButton {
+                        id: tsButton
+                        width: Math.round(height * 1.618)
+                        height: Theme.space(36)
+                        label: root.beats + "/" + root.denominator
+                        pixelSize: Theme.font.body
+                        framed: false
+                        fillColor: Theme.color.lineSoft
+                        weight: Font.DemiBold
+                        primary: root.tsOpen
+                        onActivated: {
+                            root.tsOpen = !root.tsOpen
+                            root.focusIndex = -1
+                            root.rebuildRing()
+                        }
+                    }
+
+                    DialogButton {
+                        id: tapButton
+                        width: Math.round(height * 1.618)
+                        height: Theme.space(36)
+                        label: "Tap"
+                        pixelSize: Theme.font.body
+                        framed: false
+                        fillColor: Theme.color.lineSoft
+                        onActivated: root.tap()
+                    }
                 }
             }
 
