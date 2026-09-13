@@ -3,7 +3,7 @@ name = "pulse"
 version = "0.1.0"
 edition = "2021"
 description = "A metronome for Omarchy: Rust backend, Quickshell/QML frontend, follows the Omarchy theme"
-rust-version = "1.77"
+rust-version = "1.89"
 
 [dependencies]
 # The one dependency, and the only one Pulse will ever need beyond std: a

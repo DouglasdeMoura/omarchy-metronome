@@ -22,14 +22,16 @@ impl Json {
 
     pub fn as_f64(&self) -> Option<f64> {
         match self {
-            Json::Num(n) => Some(*n),
+            Json::Num(n) if n.is_finite() => Some(*n),
             _ => None,
         }
     }
 
     pub fn as_u32(&self) -> Option<u32> {
         match self {
-            Json::Num(n) if *n >= 0.0 && *n <= u32::MAX as f64 && n.fract() == 0.0 => Some(*n as u32),
+            Json::Num(n) if *n >= 0.0 && *n <= u32::MAX as f64 && n.fract() == 0.0 => {
+                Some(*n as u32)
+            }
             _ => None,
         }
     }
@@ -296,6 +298,7 @@ impl<'a> Parser<'a> {
                                     if (0xDC00..0xE000).contains(&lo) {
                                         0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00)
                                     } else {
+                                        self.pos -= 6;
                                         0xFFFD
                                     }
                                 } else {
@@ -311,13 +314,20 @@ impl<'a> Parser<'a> {
                         _ => return Err(format!("bad escape at {}", self.pos)),
                     }
                 }
+                Some(b) if b < 0x20 => return Err(format!("unescaped control at {}", self.pos)),
                 Some(_) => {
-                    // A UTF-8 sequence is copied whole, so multi-byte characters survive.
-                    let rest = &self.bytes[self.pos..];
-                    let s = std::str::from_utf8(rest).map_err(|_| "bad utf-8".to_string())?;
-                    let c = s.chars().next().unwrap();
-                    out.push(c);
-                    self.pos += c.len_utf8();
+                    // Copy a complete unescaped span once, avoiding repeated
+                    // UTF-8 validation of the remaining string for every char.
+                    let start = self.pos;
+                    while self
+                        .peek()
+                        .is_some_and(|b| b >= 0x20 && b != b'"' && b != b'\\')
+                    {
+                        self.pos += 1;
+                    }
+                    let text = std::str::from_utf8(&self.bytes[start..self.pos])
+                        .map_err(|_| "bad utf-8".to_string())?;
+                    out.push_str(text);
                 }
             }
         }
@@ -329,6 +339,9 @@ impl<'a> Parser<'a> {
         }
         let s = std::str::from_utf8(&self.bytes[self.pos..self.pos + 4])
             .map_err(|_| "bad \\u escape".to_string())?;
+        if !s.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err("bad unicode escape".into());
+        }
         let v = u32::from_str_radix(s, 16).map_err(|_| "bad \\u escape".to_string())?;
         self.pos += 4;
         Ok(v)
@@ -339,13 +352,23 @@ impl<'a> Parser<'a> {
         if self.peek() == Some(b'-') {
             self.pos += 1;
         }
-        while self.peek().is_some_and(|b| b.is_ascii_digit()) {
-            self.pos += 1;
+        match self.peek() {
+            Some(b'0') => self.pos += 1,
+            Some(b'1'..=b'9') => {
+                while self.peek().is_some_and(|b| b.is_ascii_digit()) {
+                    self.pos += 1;
+                }
+            }
+            _ => return Err(format!("bad number at {}", start)),
         }
         if self.peek() == Some(b'.') {
             self.pos += 1;
+            let digits = self.pos;
             while self.peek().is_some_and(|b| b.is_ascii_digit()) {
                 self.pos += 1;
+            }
+            if self.pos == digits {
+                return Err(format!("bad number at {}", start));
             }
         }
         if matches!(self.peek(), Some(b'e') | Some(b'E')) {
@@ -353,20 +376,51 @@ impl<'a> Parser<'a> {
             if matches!(self.peek(), Some(b'+') | Some(b'-')) {
                 self.pos += 1;
             }
+            let digits = self.pos;
             while self.peek().is_some_and(|b| b.is_ascii_digit()) {
                 self.pos += 1;
             }
+            if self.pos == digits {
+                return Err(format!("bad number at {}", start));
+            }
         }
         let text = std::str::from_utf8(&self.bytes[start..self.pos]).unwrap();
-        text.parse::<f64>()
-            .map(Json::Num)
-            .map_err(|_| format!("bad number at {}", start))
+        let number = text
+            .parse::<f64>()
+            .map_err(|_| format!("bad number at {}", start))?;
+        if !number.is_finite() {
+            return Err(format!("number out of range at {}", start));
+        }
+        Ok(Json::Num(number))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unicode_escape_requires_four_hex_digits() {
+        assert!(Json::parse(r#""\u+001""#).is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_numbers_and_unescaped_controls() {
+        for input in ["01", "-01", "1.", "-.5", "1.e2", "1e999", "\"a\n b\""] {
+            assert!(Json::parse(input).is_err(), "accepted {input:?}");
+        }
+        for input in ["0", "-0", "0.5", "-0.5", "1e+2"] {
+            assert!(Json::parse(input).is_ok(), "rejected {input}");
+        }
+    }
+
+    #[test]
+    fn malformed_surrogate_does_not_swallow_the_next_escape() {
+        assert_eq!(
+            Json::parse(r#""\ud800\u0041""#).unwrap().as_str(),
+            Some("\u{FFFD}A")
+        );
+    }
 
     #[test]
     fn round_trips_a_protocol_shaped_object() {
@@ -410,11 +464,14 @@ mod tests {
     #[test]
     fn nested_arrays_and_whitespace() {
         let parsed = Json::parse("  { \"a\" : [ 1 , 2 , { \"b\" : null } ] }  ").unwrap();
-        assert_eq!(parsed.get("a").unwrap(), &Json::Arr(vec![
-            Json::Num(1.0),
-            Json::Num(2.0),
-            Json::Obj(vec![("b".into(), Json::Null)]),
-        ]));
+        assert_eq!(
+            parsed.get("a").unwrap(),
+            &Json::Arr(vec![
+                Json::Num(1.0),
+                Json::Num(2.0),
+                Json::Obj(vec![("b".into(), Json::Null)]),
+            ])
+        );
     }
 
     #[test]

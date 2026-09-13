@@ -26,7 +26,7 @@ PULSE_SILENT=1 ./target/release/pulse --backend < lines-of-json
 - `src/backend/proto.rs` — the one interpreter of docs/protocol.md; the wire
   has exactly one author per message.
 - `src/backend/engine.rs` — the metronome. The audio callback owns a
-  thread-local timeline and touches only atomics from the control plane;
+  callback-owned timeline and touches only atomics from the control plane;
   params are read per click, so every change lands at the next boundary.
   Events go out one channel; the out thread prints them. No audio device
   means the silent clock takes over and `ready` says `silent: true`.

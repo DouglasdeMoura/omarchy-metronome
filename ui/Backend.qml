@@ -71,9 +71,9 @@ Item {
         root.send({ c: "quit" })
     }
 
-    // Sample input: {"t":"state","bpm":120,"beats":4,"subdiv":1,"accent":true,"volume":0.8}
+    // Sample input: {"t":"state","bpm":120,"beats":4,"denominator":4,"voices":[3,1,1,1,1,1,1,1,1,1,1,1],"volume":0.8}
     // Sample input: {"t":"ready","device":"default","rate":44100,"silent":false}
-    // Sample input: {"t":"beat","beat":0,"sub":2,"kind":"sub"}
+    // Sample input: {"t":"beat","beat":0,"kind":"high"}
     // Sample input: {"t":"stopped","beats":12}
     function receive(line) {
         if (!line || line.length === 0) return
@@ -82,6 +82,10 @@ Item {
             message = JSON.parse(line)
         } catch (e) {
             root.failed("the backend sent a line this build cannot read")
+            return
+        }
+        if (!message || typeof message !== "object") {
+            root.failed("the backend sent an invalid event")
             return
         }
         if (message.t === "state") {

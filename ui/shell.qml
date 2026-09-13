@@ -9,6 +9,12 @@ import "."
 ShellRoot {
     id: shell
 
+    function requestQuit() {
+        if (backend.quitting) return
+        main.flushSave()
+        backend.quit()
+    }
+
     Backend { id: backend }
 
     FloatingWindow {
@@ -26,7 +32,7 @@ ShellRoot {
                 id: main
                 anchors.fill: parent
                 backend: backend
-                onCloseRequested: window.close()
+                onCloseRequested: shell.requestQuit()
             }
         }
 
@@ -35,12 +41,12 @@ ShellRoot {
         // line the metronome meant to send.
         Connections {
             target: Quickshell
-            function onLastWindowClosed() { backend.quit() }
+            function onLastWindowClosed() { shell.requestQuit() }
         }
 
         Connections {
             target: backend
-            function onQuitReady() { window.close() }
+            function onQuitReady() { Qt.quit() }
         }
 
         Component.onCompleted: main.forceActiveFocus()

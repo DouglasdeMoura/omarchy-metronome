@@ -57,7 +57,6 @@ Item {
     Component.onCompleted: {
         backend.hello()
         rebuildRing()
-        loading = false
     }
 
     function clampBpm(v) {
@@ -78,6 +77,14 @@ Item {
     function pushSave() {
         if (!root.backend || root.loading) return
         saveTimer.restart()
+    }
+
+    function flushSave() {
+        if (!saveTimer.running || root.loading) return
+        saveTimer.stop()
+        root.backend.save({
+            bpm: root.bpm, beats: root.beats, denominator: root.denominator, voices: root.voices
+        })
     }
 
     Timer {
@@ -138,9 +145,7 @@ Item {
         }
 
         function onReadyReceived(device, rate, silent) {
-            // The device's own identity is the system's business, not a label
-            // for the window; only its answer clears a standing error.
-            root.errorMessage = ""
+            root.errorMessage = silent ? "No audio output — running silently" : ""
         }
 
         function onStarted() {
@@ -239,7 +244,7 @@ Item {
         }
         r.push({ item: numWheel,
                  step: function (d) {
-                     tsPanel.draftBeats = Math.min(16, Math.max(1, tsPanel.draftBeats + d))
+                     tsPanel.draftBeats = Math.min(12, Math.max(1, tsPanel.draftBeats + d))
                      numWheel.select(tsPanel.draftBeats)
                  } })
         r.push({ item: denWheel,
@@ -802,7 +807,7 @@ Item {
                         id: numWheel
                         values: {
                             var v = []
-                            for (var i = 1; i <= 16; i++) v.push(i)
+                            for (var i = 1; i <= 12; i++) v.push(i)
                             return v
                         }
                         onPickedChanged: tsPanel.draftBeats = picked

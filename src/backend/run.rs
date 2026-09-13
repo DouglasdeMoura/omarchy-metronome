@@ -12,30 +12,32 @@ use std::os::unix::fs::OpenOptionsExt;
 // vanish at random positions. The lock file is held for the backend's
 // whole life; flock releases it even on a crash, so it never goes stale.
 
-pub fn lock_path() -> Option<std::path::PathBuf> {
+pub fn lock_path() -> std::path::PathBuf {
     // std has no getuid; /proc/self/status is the std-only answer, and the
     // number is only a namespace for the file name.
-    let uid = std::fs::read_to_string("/proc/self/status").ok().and_then(|s| {
-        s.lines().find_map(|l| {
-            l.strip_prefix("Uid:")
-                .and_then(|rest| rest.split_whitespace().next())
-                .and_then(|v| v.parse::<u32>().ok())
-        })
-    });
+    let uid = std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|s| {
+            s.lines().find_map(|l| {
+                l.strip_prefix("Uid:")
+                    .and_then(|rest| rest.split_whitespace().next())
+                    .and_then(|v| v.parse::<u32>().ok())
+            })
+        });
     let name = match uid {
         Some(id) => format!("pulse-{}.lock", id),
         None => "pulse.lock".to_string(),
     };
     match std::env::var_os("XDG_RUNTIME_DIR") {
-        Some(v) if !v.is_empty() => Some(std::path::PathBuf::from(v).join(name)),
-        _ => Some(std::path::PathBuf::from("/tmp").join(name)),
+        Some(v) if !v.is_empty() => std::path::PathBuf::from(v).join(name),
+        _ => std::path::PathBuf::from("/tmp").join(name),
     }
 }
 
 // Try to become the one Pulse. Ok(file) holds the lock for the process's
 // life; Err means another Pulse is already running.
 pub fn acquire_instance_lock() -> Result<std::fs::File, String> {
-    let path = lock_path().ok_or_else(|| "no runtime directory for the lock".to_string())?;
+    let path = lock_path();
     let file = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
@@ -44,24 +46,30 @@ pub fn acquire_instance_lock() -> Result<std::fs::File, String> {
         .mode(0o600)
         .open(&path)
         .map_err(|e| format!("{} could not be opened ({})", path.display(), e))?;
-    file.try_lock()
-        .map(|()| file)
-        .map_err(|_| format!("another Pulse is already running ({})", path.display()))
+    file.try_lock().map(|()| file).map_err(|err| match err {
+        std::fs::TryLockError::WouldBlock => {
+            format!("another Pulse is already running ({})", path.display())
+        }
+        std::fs::TryLockError::Error(err) => {
+            format!("{} could not be locked ({})", path.display(), err)
+        }
+    })
 }
 
 // A lock held by nobody: used by the GUI launch for a cheap early answer.
 pub fn instance_is_running() -> bool {
-    let Some(path) = lock_path() else { return false };
+    let path = lock_path();
     let Ok(file) = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
         .truncate(false)
+        .mode(0o600)
         .open(&path)
     else {
         return false;
     };
-    file.try_lock().is_err()
+    matches!(file.try_lock(), Err(std::fs::TryLockError::WouldBlock))
 }
 
 pub fn run() -> i32 {
@@ -73,7 +81,7 @@ pub fn run() -> i32 {
             // The fresh shell gets the reason on the wire, where its error
             // strip shows it, and on stderr for the logs.
             eprintln!("pulse: {}", msg);
-            let _ = proto::emit(&proto::ev::error("another Pulse is already running"));
+            let _ = proto::emit(&proto::ev::error(&msg));
             return 2;
         }
     };
@@ -100,8 +108,12 @@ pub fn run() -> i32 {
                 continue;
             }
         };
+        let quitting = matches!(cmd, Command::Quit);
         if handle.cmd_tx.send(cmd).is_err() {
             // The control thread is gone; there is nothing left to serve.
+            break;
+        }
+        if quitting {
             break;
         }
     }

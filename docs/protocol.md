@@ -15,7 +15,7 @@ Every request names its command in `"c"`.
 | `start` | — | arm the timeline; the first click is one lead-in out |
 | `stop` | — | stop at once; a `stopped` event answers with the beat total |
 | `toggle` | — | start if stopped, stop if running |
-| `params` | any of `bpm`, `beats`, `denominator`, `volume`, `voices` | apply; tempo and signature changes land at the next click, volume at the next click, all clamped |
+| `params` | any of `bpm`, `beats`, `denominator`, `volume`, `voices` | apply; tempo and signature changes land at the next click, volume at the next click, numeric ranges clamped; invalid types, voices and denominators rejected |
 | `save` | same fields as `params` | apply and persist to `~/.config/pulse/state.json` |
 | `quit` | — | drain (stop, last events out), then one `quitready` |
 
@@ -25,7 +25,10 @@ Every request names its command in `"c"`.
 ```
 
 `voices` is the per-beat pattern: 0 silent, 1 low tone, 2 medium tone,
-3 high tone — twelve slots so a pattern survives a change of meter.
+3 high tone — twelve slots so a pattern survives a change of meter. Short arrays retain the
+remaining slots; arrays longer than twelve and values outside 0–3 are rejected.
+Patches are atomic: an invalid field leaves every setting unchanged.
+The numerator is clamped to 1–12 and tempo to 10–400 BPM.
 `denominator` is the time signature's bottom number: the tick is a 1/d note,
 so its interval is 60/bpm × 4/d; only 1, 2, 4 and 8 are accepted. The legacy
 `subdiv` key (1=4, 2/3/4=8) is still read when `denominator` is absent, and
@@ -47,14 +50,25 @@ Every event names itself in `"t"`.
 | `quitready` | — | the backend has drained; the window may close |
 
 ```json
-{"t":"beat","beat":0,"sub":2,"kind":"sub"}
+{"t":"beat","beat":0,"kind":"high"}
 {"t":"stopped","beats":12}
 ```
 
 ## Timing
 
 Beat events are emitted by the audio callback at the buffer position where
-the click is mixed in, so a lamp lights when its click is on the device.
-Tempo, meter and subdivision changes are read per click, which makes the next
+the click is mixed in, before the buffer reaches the speakers. Visuals may lead audible output by
+the device buffer latency; the protocol carries no presentation timestamp.
+Tempo, meter and voice changes are read per click, which makes the next
 click the changeover point; volume likewise. `quit` waits for the stop to be
 observable before it answers, so a close never races the last beat out.
+
+Repeated start/stop commands are idempotent. Transport requests received before
+the next output iteration coalesce to their final desired state; toggles include
+pending requests. When a meter shrinks, the next position wraps into the new bar.
+A click keeps its voice and volume until its tail ends.
+
+If a live audio stream fails, the backend reports an error and another
+`ready` with `silent: true`. If playback was requested, the silent clock
+starts a new run from beat zero. `hello` reports the current output.
+`quitready` is the final event and the process exits even if stdin stays open.

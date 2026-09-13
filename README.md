@@ -12,11 +12,11 @@ frontend, and a look that follows your Omarchy theme live — change themes with
 - **Sample-accurate clicks.** The audio callback mixes each click at an exact
   frame on the output device (via [cpal](https://github.com/RustAudio/cpal),
   through PipeWire/ALSA); the beat meters are driven by the same timeline, so
-  what you see is what you hear.
+  the visuals follow playback, subject to audio buffering and display latency.
 - **Tempo at hand.** A slider and ± steppers over 10–400 BPM; above the
   number, the classical marking names what the beat is relative to — Largo,
   Andante, Allegretto, Presto…
-- **Time signature editor.** Click the signature to pick 1–16 counts per bar
+- **Time signature editor.** Click the signature to pick 1–12 counts per bar
   over a 1, 2, 4 or 8 bottom number — 4/4, 6/8, 3/2, 12/8 and friends; the
   tick is the notated value, so 6/8 at 120 ticks on the eighth.
 - **Per-beat voices.** A rectangle for every beat, divided in three bars:
@@ -25,7 +25,7 @@ frontend, and a look that follows your Omarchy theme live — change themes with
 - **Tap tempo**: tap the button or press `t` in rhythm.
 - **Omarchy theming**: colors, type scale, spacing and corner radius all come
   from the live theme (`colors.toml`, `shell.toml`), watched for changes.
-- **Remembers itself**: bpm, meter and subdivision persist in
+- **Remembers itself**: bpm, meter and per-beat voices persist in
   `~/.config/pulse/state.json`.
 - **Keyboard-first**, like Flea:
 
@@ -34,14 +34,14 @@ frontend, and a look that follows your Omarchy theme live — change themes with
 | `space` | start / stop |
 | `t` | tap tempo |
 | `↑` / `↓` | tempo ±1 (`shift` ±5, `PgUp`/`PgDn` ±10) |
-| `1`–`4` | subdivision |
+| `1`, `2`, `4`, `8` | time-signature denominator |
 | `esc` | stop |
 | `ctrl+q` | quit |
 
 ## Running
 
 ```sh
-cargo build --release
+cargo build --release  # Rust 1.89 or newer
 ./target/release/pulse
 ```
 
@@ -90,6 +90,6 @@ pulse (CLI)
 ## Tests
 
 ```sh
-cargo test          # timeline, protocol, json, state
-printf '{"c":"start"}\n' | PULSE_SILENT=1 ./target/release/pulse --backend
+cargo test          # timeline, protocol process, json, state
+bash tests/ui.sh    # offscreen Quickshell frontend regression checks
 ```

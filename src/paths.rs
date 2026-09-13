@@ -37,9 +37,9 @@ pub fn ui_dir() -> Option<PathBuf> {
 }
 
 pub fn has_display() -> bool {
-    ["WAYLAND_DISPLAY", "DISPLAY"].iter().any(|var| {
-        std::env::var_os(var).is_some_and(|v| !v.is_empty())
-    })
+    ["WAYLAND_DISPLAY", "DISPLAY"]
+        .iter()
+        .any(|var| std::env::var_os(var).is_some_and(|v| !v.is_empty()))
 }
 
 // Whether a Pulse backend already holds the single-instance lock.

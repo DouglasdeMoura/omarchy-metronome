@@ -1,7 +1,7 @@
 use crate::json::Json;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use super::proto;
 use super::state;
@@ -87,13 +87,25 @@ impl Params {
 
     // Only the keys present are a patch; everything else keeps its value.
     pub fn apply_patch(&mut self, body: &Json) -> Result<(), String> {
+        if !matches!(body, Json::Obj(_)) {
+            return Err("parameters must be an object".into());
+        }
+        let mut next = self.clone();
+        next.patch_fields(body)?;
+        *self = next;
+        Ok(())
+    }
+
+    fn patch_fields(&mut self, body: &Json) -> Result<(), String> {
         if let Some(v) = body.get("bpm") {
             self.bpm = v
                 .as_f64()
                 .ok_or_else(|| "bpm must be a number".to_string())?;
         }
         if let Some(v) = body.get("beats") {
-            self.beats = v.as_u32().ok_or_else(|| "beats must be a whole number".to_string())?;
+            self.beats = v
+                .as_u32()
+                .ok_or_else(|| "beats must be a whole number".to_string())?;
         }
         if let Some(v) = body.get("denominator") {
             let d = v
@@ -106,24 +118,29 @@ impl Params {
         } else if let Some(v) = body.get("subdiv") {
             // A pre-time-signature state file: the old clicks-per-beat ladder
             // lands on the closest denominator.
-            let s = v.as_u32().ok_or_else(|| "subdiv must be a whole number".to_string())?;
+            let s = v
+                .as_u32()
+                .ok_or_else(|| "subdiv must be a whole number".to_string())?;
             self.denominator = match s {
                 1 => 4,
                 _ => 8,
             };
         }
         if let Some(v) = body.get("volume") {
-            self.volume = v
-                .as_f64()
-                .ok_or_else(|| "volume must be a number".to_string())? as f32;
+            self.volume =
+                v.as_f64()
+                    .ok_or_else(|| "volume must be a number".to_string())? as f32;
         }
         if let Some(v) = body.get("voices") {
             let items = match v {
                 Json::Arr(items) => items,
                 _ => return Err("voices must be an array".to_string()),
             };
-            // A short array pads with low tones; an entry that is not 0..3 is
+            // A short array preserves the tail; an entry that is not 0..3 is
             // refused, not clamped, so a sloppy client learns the wire.
+            if items.len() > BEATS_MAX as usize {
+                return Err("voices must contain at most twelve entries".into());
+            }
             let mut voices = self.voices;
             for (i, item) in items.iter().take(BEATS_MAX as usize).enumerate() {
                 let n = item
@@ -183,12 +200,32 @@ struct ClickSpec {
 
 fn click_spec(kind: Kind) -> ClickSpec {
     match kind {
-        Kind::High => ClickSpec { freq: 1800.0, amp: 1.0, dur: 0.07, tau: 0.018 },
-        Kind::Medium => ClickSpec { freq: 1400.0, amp: 0.85, dur: 0.06, tau: 0.015 },
-        Kind::Low => ClickSpec { freq: 1100.0, amp: 0.7, dur: 0.055, tau: 0.012 },
+        Kind::High => ClickSpec {
+            freq: 1800.0,
+            amp: 1.0,
+            dur: 0.07,
+            tau: 0.018,
+        },
+        Kind::Medium => ClickSpec {
+            freq: 1400.0,
+            amp: 0.85,
+            dur: 0.06,
+            tau: 0.015,
+        },
+        Kind::Low => ClickSpec {
+            freq: 1100.0,
+            amp: 0.7,
+            dur: 0.055,
+            tau: 0.012,
+        },
         // Nothing sounds on a muted beat; the spec is never sampled because
         // fire_click sets the click length to zero.
-        Kind::Off => ClickSpec { freq: 0.0, amp: 0.0, dur: 0.0, tau: 1.0 },
+        Kind::Off => ClickSpec {
+            freq: 0.0,
+            amp: 0.0,
+            dur: 0.0,
+            tau: 1.0,
+        },
     }
 }
 
@@ -236,6 +273,7 @@ struct Timeline {
     total_beats: u64,
     click_pos: usize,
     click_len: usize,
+    gain: f32,
     spec: ClickSpec,
 }
 
@@ -248,6 +286,7 @@ impl Timeline {
             total_beats: 0,
             click_pos: 0,
             click_len: 0,
+            gain: 0.0,
             spec: click_spec(Kind::Low),
         }
     }
@@ -275,10 +314,16 @@ impl Timeline {
     // click, so a bpm or signature change lands at the next boundary, which is
     // where a musician expects it.
     fn fire_click(&mut self, params: &Params, sr: f64) -> Ev {
+        self.beat %= params.beats;
+        self.gain = params.volume;
         let kind = kind_for(self.beat, params);
         self.spec = click_spec(kind);
         // A muted beat walks the timeline but samples no click.
-        self.click_len = if kind == Kind::Off { 0 } else { click_len(&self.spec, sr) };
+        self.click_len = if kind == Kind::Off {
+            0
+        } else {
+            click_len(&self.spec, sr)
+        };
         self.click_pos = 0;
         let ev = Ev::Beat {
             beat: self.beat,
@@ -292,6 +337,7 @@ impl Timeline {
 
     // One buffer's worth: fire every due click, then fill with silence or the
     // running click. `from` is the buffer's first absolute frame.
+    #[cfg(test)]
     fn mix_into(
         &mut self,
         out: &mut [f32],
@@ -301,29 +347,30 @@ impl Timeline {
         sr: f64,
         events: &mut Vec<Ev>,
     ) {
-        let mut gain = params.volume;
         for (i, frame) in out.chunks_mut(channels).enumerate() {
             let abs = from + i as u64;
             while self.armed && abs as f64 >= self.phase {
                 let ev = self.fire_click(params, sr);
-                gain = params.volume;
                 events.push(ev);
             }
-            let s = if self.click_pos < self.click_len {
-                let s = click_sample(&self.spec, self.click_pos, sr) * gain;
-                self.click_pos += 1;
-                s
-            } else {
-                0.0
-            };
+            let s = self.sample(sr);
             for sample in frame.iter_mut() {
                 *sample = s;
             }
         }
     }
 
+    fn sample(&mut self, sr: f64) -> f32 {
+        if self.click_pos >= self.click_len {
+            return 0.0;
+        }
+        let sample = click_sample(&self.spec, self.click_pos, sr) * self.gain;
+        self.click_pos += 1;
+        sample
+    }
+
     // The silent clock's shape of the same loop: no samples, only the due
-    // clicks up to `until`, exclusive.
+    // clicks up to `until`, inclusive.
     fn advance_events_to(&mut self, until: u64, params: &Params, sr: f64, events: &mut Vec<Ev>) {
         while self.armed && until as f64 >= self.phase {
             events.push(self.fire_click(params, sr));
@@ -331,14 +378,67 @@ impl Timeline {
     }
 }
 
-// Control → output plane. The atomics are what a realtime callback may read
-// without ever locking; the params mutex is taken only at a click boundary.
+// Single writer, bounded reader: a callback keeps its previous snapshot if a
+// publication is in progress. Sequential consistency makes the version check
+// cover all fields without a mutex, allocation, or retry loop.
+struct AtomicParams {
+    version: AtomicU64,
+    bpm: AtomicU64,
+    volume: AtomicU32,
+    pattern: AtomicU64,
+}
+
+impl AtomicParams {
+    fn new(params: &Params) -> Self {
+        let value = Self {
+            version: AtomicU64::new(0),
+            bpm: AtomicU64::new(0),
+            volume: AtomicU32::new(0),
+            pattern: AtomicU64::new(0),
+        };
+        value.store(params);
+        value
+    }
+
+    fn store(&self, params: &Params) {
+        self.version.fetch_add(1, Ordering::SeqCst);
+        self.bpm.store(params.bpm.to_bits(), Ordering::SeqCst);
+        self.volume.store(params.volume.to_bits(), Ordering::SeqCst);
+        let mut pattern = params.beats as u64 | ((params.denominator as u64) << 4);
+        for (i, voice) in params.voices.iter().enumerate() {
+            pattern |= (*voice as u64) << (8 + i * 2);
+        }
+        self.pattern.store(pattern, Ordering::SeqCst);
+        self.version.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn load(&self) -> Option<Params> {
+        let version = self.version.load(Ordering::SeqCst);
+        if version & 1 != 0 {
+            return None;
+        }
+        let bpm = f64::from_bits(self.bpm.load(Ordering::SeqCst));
+        let volume = f32::from_bits(self.volume.load(Ordering::SeqCst));
+        let pattern = self.pattern.load(Ordering::SeqCst);
+        if version != self.version.load(Ordering::SeqCst) {
+            return None;
+        }
+        Some(Params {
+            bpm,
+            volume,
+            beats: (pattern & 15) as u32,
+            denominator: ((pattern >> 4) & 15) as u32,
+            voices: std::array::from_fn(|i| ((pattern >> (8 + i * 2)) & 3) as u8),
+        })
+    }
+}
+
+// Control → output plane. Only the control thread publishes parameters.
 struct Shared {
-    params: Mutex<Params>,
-    // 0 = nothing, 1 = start requested, 2 = stop requested. The output plane
-    // clears it, so a request can never be lost between threads.
-    pending: AtomicU8,
-    running: AtomicBool,
+    params: AtomicParams,
+    // Desired transport state includes requests not yet seen by the output.
+    requested: AtomicBool,
+    stop_acknowledged: AtomicBool,
     events: Sender<Ev>,
     // The device error callback can fire every buffer; one report is the truth.
     err_reported: AtomicBool,
@@ -348,7 +448,9 @@ struct Shared {
 
 impl Shared {
     fn params_snapshot(&self) -> Params {
-        self.params.lock().unwrap().clone()
+        self.params
+            .load()
+            .expect("control thread is the sole parameter writer")
     }
 
     fn send(&self, ev: Ev) {
@@ -373,15 +475,19 @@ pub fn launch(initial: Params, silent_forced: bool) -> Handle {
 fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced: bool) {
     let (ev_tx, ev_rx) = std::sync::mpsc::channel::<Ev>();
     let shared = Arc::new(Shared {
-        params: Mutex::new(initial),
-        pending: AtomicU8::new(0),
-        running: AtomicBool::new(false),
+        params: AtomicParams::new(&initial),
+        requested: AtomicBool::new(false),
+        stop_acknowledged: AtomicBool::new(true),
         events: ev_tx,
         err_reported: AtomicBool::new(false),
         shutdown: AtomicBool::new(false),
     });
 
-    let audio = if silent_forced { None } else { audio::Output::open(&shared) };
+    let mut audio = if silent_forced {
+        None
+    } else {
+        audio::Output::open(&shared)
+    };
     let mut clock = None;
     if audio.is_none() {
         if !silent_forced {
@@ -392,7 +498,7 @@ fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced
     }
 
     // The device's own name and rate go out with ready; a silent clock says so.
-    let (device, rate) = match &audio {
+    let (mut device, mut rate) = match &audio {
         Some(out) => (out.device_name.clone(), out.sample_rate),
         None => ("silent".to_string(), 48_000),
     };
@@ -416,35 +522,47 @@ fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced
         })
         .expect("spawn out thread");
 
-    while let Ok(cmd) = cmd_rx.recv() {
+    loop {
+        if audio.is_some() && shared.err_reported.load(Ordering::Acquire) {
+            // Dropping the failed stream joins its callback before the silent
+            // clock takes ownership. A new run starts from beat zero.
+            drop(audio.take());
+            device = "silent".into();
+            rate = 48_000;
+            let _ = proto::emit(&proto::ev::ready(&device, rate, true));
+            clock = Some(clock::spawn(shared.clone(), rate as f64));
+        }
+        let cmd = match cmd_rx.recv_timeout(std::time::Duration::from_millis(20)) {
+            Ok(cmd) => cmd,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        };
         match cmd {
             proto::Command::Hello => {
                 let _ = proto::emit(&proto::ev::state(&shared.params_snapshot()));
                 let _ = proto::emit(&proto::ev::ready(&device, rate, audio.is_none()));
             }
-            proto::Command::Start => shared.pending.store(1, Ordering::Release),
-            proto::Command::Stop => shared.pending.store(2, Ordering::Release),
+            proto::Command::Start => shared.requested.store(true, Ordering::Release),
+            proto::Command::Stop => shared.requested.store(false, Ordering::Release),
             proto::Command::Toggle => {
-                let next = if shared.running.load(Ordering::Acquire) { 2 } else { 1 };
-                shared.pending.store(next, Ordering::Release);
+                shared.requested.fetch_xor(true, Ordering::AcqRel);
             }
-            proto::Command::Params(body) => {
+            proto::Command::Params(ref body) | proto::Command::Save(ref body) => {
                 let mut params = shared.params_snapshot();
-                if let Err(e) = params.apply_patch(&body) {
-                    let _ = proto::emit(&proto::ev::error(&e));
-                } else {
-                    *shared.params.lock().unwrap() = params;
-                }
-            }
-            proto::Command::Save(body) => {
-                let mut params = shared.params_snapshot();
-                let patch_result = params.apply_patch(&body);
-                if let Err(e) = patch_result {
-                    let _ = proto::emit(&proto::ev::error(&e));
-                } else {
-                    *shared.params.lock().unwrap() = params.clone();
-                    if let Err(e) = state::save(&params) {
-                        let _ = proto::emit(&proto::ev::error(&format!("the state was not saved ({})", e)));
+                match params.apply_patch(body) {
+                    Err(e) => {
+                        let _ = proto::emit(&proto::ev::error(&e));
+                    }
+                    Ok(()) => {
+                        shared.params.store(&params);
+                        if matches!(cmd, proto::Command::Save(_)) {
+                            if let Err(e) = state::save(&params) {
+                                let _ = proto::emit(&proto::ev::error(&format!(
+                                    "the state was not saved ({})",
+                                    e
+                                )));
+                            }
+                        }
                     }
                 }
             }
@@ -454,7 +572,8 @@ fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced
 
     // Drain: a stop at a click boundary, then wait for the output plane to
     // say it happened, so a quit never races the last beat line out the door.
-    shared.pending.store(2, Ordering::Release);
+    shared.requested.store(false, Ordering::Release);
+    shared.stop_acknowledged.store(false, Ordering::Release);
     drain_stop(&shared);
 
     shared.shutdown.store(true, Ordering::Release);
@@ -465,25 +584,42 @@ fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced
     let _ = proto::emit(&proto::ev::quitready());
 }
 
+// Both outputs reconcile the same desired transport state.
+fn update_transport(shared: &Shared, tl: &mut Timeline, frame: u64, sr: f64) {
+    apply_transport(
+        shared,
+        tl,
+        frame,
+        sr,
+        shared.requested.load(Ordering::Acquire),
+    );
+}
+
+fn apply_transport(shared: &Shared, tl: &mut Timeline, frame: u64, sr: f64, requested: bool) {
+    if requested != tl.armed {
+        if requested {
+            tl.arm(frame, 0.08, sr);
+            shared.send(Ev::Started);
+        } else {
+            tl.disarm();
+            shared.send(Ev::Stopped {
+                beats: tl.total_beats,
+            });
+        }
+    }
+    // Acknowledge the observed request, not the control thread's current
+    // desired state: a start already in flight must finish and then stop.
+    shared
+        .stop_acknowledged
+        .store(!requested, Ordering::Release);
+}
+
 mod audio {
-    use super::{Ev, Shared, Timeline};
+    use super::{update_transport, Ev, Shared, Timeline};
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-    use std::cell::RefCell;
-    use std::sync::atomic::{AtomicU64, Ordering};
+    use cpal::{FromSample, SizedSample};
+    use std::sync::atomic::Ordering;
     use std::sync::Arc;
-
-    const LEAD_SECONDS: f64 = 0.08;
-
-    // One timeline per audio thread. The cpal callback runs on a device thread
-    // that never crosses over, so thread-local storage is the cheapest safe
-    // home for state the control plane must never touch mid-buffer.
-    thread_local! {
-        static TIMELINE: RefCell<Timeline> = RefCell::new(Timeline::new());
-    }
-
-    fn with_timeline<R>(f: impl FnOnce(&mut Timeline) -> R) -> R {
-        TIMELINE.with(|tl| f(&mut tl.borrow_mut()))
-    }
 
     pub struct Output {
         pub device_name: String,
@@ -491,223 +627,144 @@ mod audio {
         _stream: cpal::Stream,
     }
 
+    fn build<T: SizedSample + FromSample<f32>>(
+        device: &cpal::Device,
+        config: &cpal::StreamConfig,
+        shared: &Arc<Shared>,
+    ) -> Result<cpal::Stream, cpal::BuildStreamError> {
+        let channels = config.channels as usize;
+        let sr = config.sample_rate.0 as f64;
+        let mut tl = Timeline::new();
+        let mut frame = 0;
+        let mut params = shared.params_snapshot();
+        let callback_shared = shared.clone();
+        let err_shared = shared.clone();
+        device.build_output_stream(
+            config,
+            move |data: &mut [T], _| {
+                let s = &callback_shared;
+                update_transport(s, &mut tl, frame, sr);
+                for samples in data.chunks_mut(channels) {
+                    while tl.armed && frame as f64 >= tl.phase {
+                        if let Some(latest) = s.params.load() {
+                            params = latest;
+                        }
+                        s.send(tl.fire_click(&params, sr));
+                    }
+                    let value = T::from_sample(tl.sample(sr));
+                    samples.fill(value);
+                    frame += 1;
+                }
+            },
+            move |err| {
+                if !err_shared.err_reported.swap(true, Ordering::AcqRel) {
+                    err_shared.send(Ev::Error(format!("the audio device failed ({})", err)));
+                }
+            },
+            None,
+        )
+    }
+
     impl Output {
-        // Build the default output stream, or say why not and give None, which
-        // the control thread answers with the silent clock.
         pub fn open(shared: &Arc<Shared>) -> Option<Output> {
-            let host = cpal::default_host();
-            let device = host.default_output_device()?;
-            let name = device.name().unwrap_or_else(|_| "unknown".to_string());
-
-            // The plugin default can sit below the server's own rate (a
-            // PipeWire graph at 48 kHz answers 44.1), so every click would
-            // cross a resampler before the device — the fragile path for a
-            // 55 ms transient. Try 48 kHz first and fall back to the
-            // device's own default when it will not have it.
-            let default_cfg = match device.default_output_config() {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("pulse: the output device answered no config ({})", e);
-                    return None;
-                }
-            };
-            if default_cfg.sample_format() != cpal::SampleFormat::F32 {
-                eprintln!(
-                    "pulse: the output device offered {:?}, and Pulse speaks f32 only",
-                    default_cfg.sample_format()
-                );
+            let device = cpal::default_host().default_output_device()?;
+            let name = device.name().unwrap_or_else(|_| "unknown".into());
+            let default = device
+                .default_output_config()
+                .map_err(|err| {
+                    eprintln!("pulse: no output configuration ({err})");
+                })
+                .ok()?;
+            let format = default.sample_format();
+            let mut config: cpal::StreamConfig = default.into();
+            if config.channels == 0 || config.sample_rate.0 == 0 {
                 return None;
             }
-            let mut config: cpal::StreamConfig = default_cfg.into();
-            config.sample_rate = cpal::SampleRate(48_000);
-
-            let frame = Arc::new(AtomicU64::new(0));
-
-            let stream: Option<(cpal::Stream, u32)>;
-            loop {
-                let sample_rate = config.sample_rate.0;
-                let channels = config.channels as usize;
-                let sr = sample_rate as f64;
-                let callback_frame = frame.clone();
-                let callback_shared = shared.clone();
-                let err_shared = shared.clone();
-
-                let built = device.build_output_stream(
-                    &config,
-                    move |data: &mut [f32], _| {
-                    let s: &Shared = &callback_shared;
-                    let running = s.running.load(Ordering::Acquire);
-                    match s.pending.swap(0, Ordering::AcqRel) {
-                        1 if !running => {
-                            let at = callback_frame.load(Ordering::Acquire);
-                            with_timeline(|tl| tl.arm(at, LEAD_SECONDS, sr));
-                            s.running.store(true, Ordering::Release);
-                            s.send(Ev::Started);
-                        }
-                        2 if running => {
-                            let beats = with_timeline(|tl| {
-                                tl.disarm();
-                                tl.total_beats
-                            });
-                            s.running.store(false, Ordering::Release);
-                            s.send(Ev::Stopped { beats });
-                        }
-                        _ => {}
-                    }
-
-                    if s.running.load(Ordering::Acquire) {
-                        let params = s.params_snapshot();
-                        let from = callback_frame.load(Ordering::Acquire);
-                        let mut events = Vec::new();
-                        with_timeline(|tl| {
-                            tl.mix_into(data, channels, from, &params, sr, &mut events)
-                        });
-                        for ev in events {
-                            s.send(ev);
-                        }
-                    } else {
-                        data.fill(0.0);
-                    }
-                    callback_frame.fetch_add(data.len() as u64 / channels.max(1) as u64, Ordering::AcqRel);
-                },
-                move |err| {
-                    if !err_shared.err_reported.swap(true, Ordering::AcqRel) {
-                        err_shared.send(Ev::Error(format!("the audio device failed ({})", err)));
-                    }
-                },
-                None,
-                );
+            // A finite list: a failed 48 kHz default must never retry forever.
+            let mut rates = vec![48_000];
+            if config.sample_rate.0 != 48_000 {
+                rates.push(config.sample_rate.0);
+            }
+            for rate in rates {
+                shared.err_reported.store(false, Ordering::Release);
+                config.sample_rate = cpal::SampleRate(rate);
+                let built = match format {
+                    cpal::SampleFormat::I8 => build::<i8>(&device, &config, shared),
+                    cpal::SampleFormat::I16 => build::<i16>(&device, &config, shared),
+                    cpal::SampleFormat::I32 => build::<i32>(&device, &config, shared),
+                    cpal::SampleFormat::I64 => build::<i64>(&device, &config, shared),
+                    cpal::SampleFormat::U8 => build::<u8>(&device, &config, shared),
+                    cpal::SampleFormat::U16 => build::<u16>(&device, &config, shared),
+                    cpal::SampleFormat::U32 => build::<u32>(&device, &config, shared),
+                    cpal::SampleFormat::U64 => build::<u64>(&device, &config, shared),
+                    cpal::SampleFormat::F32 => build::<f32>(&device, &config, shared),
+                    cpal::SampleFormat::F64 => build::<f64>(&device, &config, shared),
+                    _ => return None,
+                };
                 match built {
-                    Ok(s) => match s.play() {
+                    Ok(stream) => match stream.play() {
                         Ok(()) => {
-                            stream = Some((s, sample_rate));
-                            break;
+                            return Some(Output {
+                                device_name: name,
+                                sample_rate: rate,
+                                _stream: stream,
+                            })
                         }
-                        Err(e) => {
-                            eprintln!("pulse: the output stream would not start at {} Hz ({})", sample_rate, e);
-                        }
+                        Err(err) => eprintln!("pulse: output would not start at {rate} Hz ({err})"),
                     },
-                    Err(e) => {
-                        eprintln!("pulse: the output stream could not be built at {} Hz ({})", sample_rate, e);
-                    }
+                    Err(err) => eprintln!("pulse: output could not be built at {rate} Hz ({err})"),
                 }
-                if sample_rate == 48_000 {
-                    // Fall back to the device's own answer and try once more.
-                    if let Ok(def) = device.default_output_config() {
-                        config = def.into();
-                        continue;
-                    }
-                }
-                return None;
             }
-
-            let (stream, sample_rate) = stream?;
-
-            Some(Output {
-                device_name: name,
-                sample_rate,
-                _stream: stream,
-            })
+            None
         }
     }
 }
 
 mod clock {
-    use super::{Ev, Shared, Timeline};
+    use super::{update_transport, Params, Shared, Timeline};
     use std::sync::atomic::Ordering;
     use std::sync::Arc;
     use std::time::{Duration, Instant};
 
-    const LEAD_SECONDS: f64 = 0.08;
-    const POLL: Duration = Duration::from_millis(10);
-    // The final stretch is spun, not slept, the way the audio path never sleeps
-    // at all; this is the silent clock's answer to the same problem.
-    const SPIN: Duration = Duration::from_millis(8);
-
     pub fn spawn(shared: Arc<Shared>, sr: f64) -> std::thread::JoinHandle<()> {
         std::thread::Builder::new()
             .name("pulse-clock".into())
-            .spawn(move || run(shared, sr))
+            .spawn(move || {
+                let mut tl = Timeline::new();
+                let mut events = Vec::new();
+                let anchor = Instant::now();
+                let mut params = Params::default();
+                while !shared.shutdown.load(Ordering::Acquire) {
+                    let frame = (anchor.elapsed().as_secs_f64() * sr) as u64;
+                    update_transport(&shared, &mut tl, frame, sr);
+                    events.clear();
+                    if let Some(latest) = shared.params.load() {
+                        params = latest;
+                    }
+                    tl.advance_events_to(frame, &params, sr, &mut events);
+                    for ev in events.drain(..) {
+                        shared.send(ev);
+                    }
+                    // Silent playback needs no CPU-burning spin wait.
+                    let wait = if tl.armed {
+                        Duration::from_secs_f64(((tl.phase - frame as f64) / sr).max(0.0))
+                            .min(Duration::from_millis(2))
+                    } else {
+                        Duration::from_millis(2)
+                    };
+                    std::thread::sleep(wait);
+                }
+            })
             .expect("spawn silent clock")
-    }
-
-    fn run(shared: Arc<Shared>, sr: f64) {
-        let mut tl = Timeline::new();
-        let mut events = Vec::new();
-        loop {
-            // Parked between runs: only a start request or a shutdown moves it.
-            loop {
-                if shared.shutdown.load(Ordering::Acquire) {
-                    return;
-                }
-                match shared.pending.swap(0, Ordering::AcqRel) {
-                    1 => break,
-                    2 if shared.running.load(Ordering::Acquire) => {
-                        let beats = {
-                            tl.disarm();
-                            shared.running.store(false, Ordering::Release);
-                            tl.total_beats
-                        };
-                        shared.send(Ev::Stopped { beats });
-                    }
-                    _ => std::thread::sleep(POLL),
-                }
-            }
-
-            let anchor = Instant::now();
-            tl.arm(0, LEAD_SECONDS, sr);
-            shared.running.store(true, Ordering::Release);
-            shared.send(Ev::Started);
-
-            while shared.running.load(Ordering::Acquire) {
-                if shared.shutdown.load(Ordering::Acquire) {
-                    return;
-                }
-                match shared.pending.swap(0, Ordering::AcqRel) {
-                    2 => {
-                        let beats = {
-                            tl.disarm();
-                            shared.running.store(false, Ordering::Release);
-                            tl.total_beats
-                        };
-                        shared.send(Ev::Stopped { beats });
-                        break;
-                    }
-                    _ => {}
-                }
-
-                let wall_frame = (anchor.elapsed().as_secs_f64() * sr) as u64;
-                events.clear();
-                tl.advance_events_to(wall_frame, &shared.params_snapshot(), sr, &mut events);
-                for ev in events.drain(..) {
-                    shared.send(ev);
-                }
-
-                // Sleep toward the next click, then spin the last stretch so the
-                // event lands within a few microseconds of its own sample.
-                if tl.armed {
-                    let until_instant = anchor + Duration::from_secs_f64(tl.phase / sr);
-                    let now = Instant::now();
-                    if until_instant > now + SPIN {
-                        let chunk = (until_instant - now - SPIN).min(POLL);
-                        std::thread::sleep(chunk);
-                    } else if until_instant > now {
-                        std::hint::spin_loop();
-                    }
-                } else {
-                    std::thread::sleep(POLL);
-                }
-            }
-        }
     }
 }
 
 // Stop has to be observable: the control thread waits for the output plane to
-// clear the running flag before it tears anything down, with a generous cap so
+// acknowledge the stop request before teardown, with a generous cap so
 // a wedged device cannot hang the quit.
 fn drain_stop(shared: &Arc<Shared>) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
-    while shared.running.load(Ordering::Acquire) {
+    while !shared.stop_acknowledged.load(Ordering::Acquire) {
         if std::time::Instant::now() > deadline {
             return;
         }
@@ -722,7 +779,177 @@ mod tests {
     const SR: f64 = 48_000.0;
 
     fn params(bpm: f64, beats: u32, denominator: u32) -> Params {
-        Params { bpm, beats, denominator, volume: 1.0, ..Params::default() }
+        Params {
+            bpm,
+            beats,
+            denominator,
+            volume: 1.0,
+            ..Params::default()
+        }
+    }
+
+    #[test]
+    fn published_parameters_are_coherent_under_contention() {
+        let first = Params::default();
+        let second = Params {
+            bpm: 397.125,
+            beats: 12,
+            denominator: 8,
+            volume: 0.1234,
+            voices: [2; 12],
+        };
+        let shared = Arc::new(AtomicParams::new(&first));
+        let writer = shared.clone();
+        let expected = second.clone();
+        let thread = std::thread::spawn(move || {
+            for _ in 0..10_000 {
+                writer.store(&expected);
+                writer.store(&Params::default());
+            }
+        });
+        for _ in 0..10_000 {
+            if let Some(p) = shared.load() {
+                assert!(p == first || p == second);
+            }
+        }
+        thread.join().unwrap();
+        assert_eq!(shared.load(), Some(first));
+    }
+
+    #[test]
+    fn transport_honors_pending_toggles_and_idempotent_start() {
+        let (events, rx) = std::sync::mpsc::channel();
+        let shared = Shared {
+            params: AtomicParams::new(&Params::default()),
+            requested: AtomicBool::new(false),
+            stop_acknowledged: AtomicBool::new(true),
+            events,
+            err_reported: AtomicBool::new(false),
+            shutdown: AtomicBool::new(false),
+        };
+        let mut tl = Timeline::new();
+        shared.requested.fetch_xor(true, Ordering::AcqRel);
+        shared.requested.fetch_xor(true, Ordering::AcqRel);
+        update_transport(&shared, &mut tl, 0, SR);
+        assert!(!tl.armed);
+        assert!(rx.try_recv().is_err());
+        shared.requested.store(true, Ordering::Release);
+        update_transport(&shared, &mut tl, 0, SR);
+        assert_eq!(rx.try_recv().unwrap(), Ev::Started);
+        let phase = tl.phase;
+        update_transport(&shared, &mut tl, 500, SR);
+        assert_eq!(tl.phase, phase);
+        assert!(rx.try_recv().is_err());
+        shared.requested.store(false, Ordering::Release);
+        update_transport(&shared, &mut tl, 600, SR);
+        assert_eq!(rx.try_recv().unwrap(), Ev::Stopped { beats: 0 });
+        assert!(!tl.armed);
+
+        // Output captured start, then control requested shutdown before the
+        // output could mark itself running. It must not acknowledge stop yet.
+        shared.stop_acknowledged.store(false, Ordering::Release);
+        apply_transport(&shared, &mut tl, 700, SR, true);
+        assert!(!shared.stop_acknowledged.load(Ordering::Acquire));
+        assert_eq!(rx.try_recv().unwrap(), Ev::Started);
+        update_transport(&shared, &mut tl, 800, SR);
+        assert!(shared.stop_acknowledged.load(Ordering::Acquire));
+        assert_eq!(rx.try_recv().unwrap(), Ev::Stopped { beats: 0 });
+    }
+
+    #[test]
+    fn every_meter_and_voice_renders_at_tempo_extremes() {
+        for sr in [44_100.0, 48_000.0] {
+            for bpm in [10.0, 113.0, 400.0] {
+                for denominator in DENOMINATORS {
+                    for beats in 1..=BEATS_MAX {
+                        for voice in 0..=VOICE_HIGH {
+                            let mut p = params(bpm, beats, denominator);
+                            p.voices = [voice; 12];
+                            let mut tl = Timeline::new();
+                            tl.arm(0, 0.0, sr);
+                            let mut events = Vec::new();
+                            for beat in 0..beats * 2 {
+                                let from = tl.phase.ceil() as u64;
+                                let mut samples = vec![0.0; (sr * 0.071) as usize * 2];
+                                events.clear();
+                                tl.mix_into(&mut samples, 2, from, &p, sr, &mut events);
+                                assert_eq!(
+                                    events,
+                                    vec![Ev::Beat {
+                                        beat: beat % beats,
+                                        kind: kind_for(beat % beats, &p)
+                                    }]
+                                );
+                                assert!(samples.as_chunks::<2>().0.iter().all(|s| s[0] == s[1]));
+                                let peak = samples.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+                                if voice == 0 {
+                                    assert_eq!(peak, 0.0);
+                                } else {
+                                    assert!(peak > 0.5 && peak <= 1.0);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn shrinking_meter_wraps_before_selecting_voice() {
+        let mut p = params(120.0, 12, 4);
+        let mut tl = Timeline::new();
+        tl.arm(0, 0.0, SR);
+        let mut events = Vec::new();
+        tl.advance_events_to(10 * 24_000, &p, SR, &mut events);
+        p.beats = 3;
+        events.clear();
+        tl.advance_events_to(11 * 24_000, &p, SR, &mut events);
+        assert_eq!(
+            events,
+            vec![Ev::Beat {
+                beat: 2,
+                kind: Kind::Low
+            }]
+        );
+    }
+
+    #[test]
+    fn gain_is_held_for_the_entire_click() {
+        let mut p = params(120.0, 4, 4);
+        let mut tl = Timeline::new();
+        tl.arm(0, 0.0, SR);
+        let mut events = Vec::new();
+        tl.mix_into(&mut [0.0; 64], 1, 0, &p, SR, &mut events);
+        p.volume = 0.0;
+        let mut tail = [0.0; 64];
+        tl.mix_into(&mut tail, 1, 64, &p, SR, &mut events);
+        assert!(tail.iter().any(|x| x.abs() > 0.1));
+        let mut next = vec![0.0; 24_000];
+        tl.mix_into(&mut next, 1, 128, &p, SR, &mut events);
+        assert!(next[24_000 - 128..].iter().all(|x| *x == 0.0));
+    }
+
+    #[test]
+    fn invalid_patch_does_not_change_any_setting() {
+        let mut p = Params::default();
+        let original = p.clone();
+        assert!(p
+            .apply_patch(&Json::parse(r#"{"bpm":200,"denominator":3}"#).unwrap())
+            .is_err());
+        assert_eq!(p, original);
+    }
+
+    #[test]
+    fn state_requires_an_object_and_at_most_twelve_voices() {
+        let mut p = Params::default();
+        assert!(p.apply_patch(&Json::Null).is_err());
+        assert!(p
+            .apply_patch(&Json::obj(vec![(
+                "voices",
+                Json::Arr(vec![Json::int(1); 13])
+            )]))
+            .is_err());
     }
 
     #[test]
@@ -757,9 +984,27 @@ mod tests {
         let mut events = Vec::new();
         tl.advance_events_to(95_999, &p, SR, &mut events);
         assert_eq!(events.len(), 4);
-        assert_eq!(events[0], Ev::Beat { beat: 0, kind: Kind::High });
-        assert_eq!(events[1], Ev::Beat { beat: 1, kind: Kind::Low });
-        assert_eq!(events[3], Ev::Beat { beat: 3, kind: Kind::Low });
+        assert_eq!(
+            events[0],
+            Ev::Beat {
+                beat: 0,
+                kind: Kind::High
+            }
+        );
+        assert_eq!(
+            events[1],
+            Ev::Beat {
+                beat: 1,
+                kind: Kind::Low
+            }
+        );
+        assert_eq!(
+            events[3],
+            Ev::Beat {
+                beat: 3,
+                kind: Kind::Low
+            }
+        );
         assert_eq!(tl.total_beats, 4);
     }
 
@@ -771,8 +1016,20 @@ mod tests {
         let mut events = Vec::new();
         tl.advance_events_to(12_000, &p, SR, &mut events);
         assert_eq!(events.len(), 2);
-        assert_eq!(events[0], Ev::Beat { beat: 0, kind: Kind::High });
-        assert_eq!(events[1], Ev::Beat { beat: 1, kind: Kind::Low });
+        assert_eq!(
+            events[0],
+            Ev::Beat {
+                beat: 0,
+                kind: Kind::High
+            }
+        );
+        assert_eq!(
+            events[1],
+            Ev::Beat {
+                beat: 1,
+                kind: Kind::Low
+            }
+        );
         assert_eq!(tl.total_beats, 2);
     }
 
@@ -858,14 +1115,18 @@ mod tests {
     #[test]
     fn a_legacy_subdiv_maps_onto_the_signature() {
         let mut p = Params::default();
-        p.apply_patch(&Json::parse(r#"{"subdiv":1}"#).unwrap()).unwrap();
+        p.apply_patch(&Json::parse(r#"{"subdiv":1}"#).unwrap())
+            .unwrap();
         assert_eq!(p.denominator, 4);
-        p.apply_patch(&Json::parse(r#"{"subdiv":2}"#).unwrap()).unwrap();
+        p.apply_patch(&Json::parse(r#"{"subdiv":2}"#).unwrap())
+            .unwrap();
         assert_eq!(p.denominator, 8);
         // Triplet signs had no bottom number to call home; they land on 8.
-        p.apply_patch(&Json::parse(r#"{"subdiv":3}"#).unwrap()).unwrap();
+        p.apply_patch(&Json::parse(r#"{"subdiv":3}"#).unwrap())
+            .unwrap();
         assert_eq!(p.denominator, 8);
-        p.apply_patch(&Json::parse(r#"{"subdiv":4}"#).unwrap()).unwrap();
+        p.apply_patch(&Json::parse(r#"{"subdiv":4}"#).unwrap())
+            .unwrap();
         assert_eq!(p.denominator, 8);
         // An explicit denominator wins over the legacy key in one body.
         let body = Json::parse(r#"{"subdiv":2,"denominator":1}"#).unwrap();
@@ -894,8 +1155,20 @@ mod tests {
         let mut events = Vec::new();
         tl.advance_events_to(24_000, &p, SR, &mut events);
         assert_eq!(events.len(), 2);
-        assert_eq!(events[0], Ev::Beat { beat: 0, kind: Kind::High });
-        assert_eq!(events[1], Ev::Beat { beat: 1, kind: Kind::Off });
+        assert_eq!(
+            events[0],
+            Ev::Beat {
+                beat: 0,
+                kind: Kind::High
+            }
+        );
+        assert_eq!(
+            events[1],
+            Ev::Beat {
+                beat: 1,
+                kind: Kind::Off
+            }
+        );
         assert_eq!(tl.total_beats, 2);
 
         // Nothing at all is on: every position walks, not one sample sounds.
@@ -908,7 +1181,13 @@ mod tests {
         tl.mix_into(&mut buf, 1, 0, &p, SR, &mut events);
         assert_eq!(events.len(), 4, "the timeline still walks every beat");
         assert!(buf.iter().all(|s| *s == 0.0), "not one sample sounds");
-        assert_eq!(events[0], Ev::Beat { beat: 0, kind: Kind::Off });
+        assert_eq!(
+            events[0],
+            Ev::Beat {
+                beat: 0,
+                kind: Kind::Off
+            }
+        );
     }
 
     #[test]
@@ -961,10 +1240,7 @@ mod tests {
             }
             assert_eq!(
                 events,
-                vec![
-                    Ev::Beat { beat: 0, kind },
-                    Ev::Beat { beat: 1, kind },
-                ],
+                vec![Ev::Beat { beat: 0, kind }, Ev::Beat { beat: 1, kind },],
                 "voice {} must fire two {} beats in one second at 120bpm 4/4",
                 voice,
                 kind.wire()
@@ -974,9 +1250,13 @@ mod tests {
             if freq == 0.0 {
                 assert_eq!(peak, 0.0, "silent voice must render no samples");
             } else {
-                assert!(peak > 0.5, "voice {} must be audible (peak {})", voice, peak);
-                let g = [1100.0, 1400.0, 1800.0]
-                    .map(|f| goertzel(seg, SR, f));
+                assert!(
+                    peak > 0.5,
+                    "voice {} must be audible (peak {})",
+                    voice,
+                    peak
+                );
+                let g = [1100.0, 1400.0, 1800.0].map(|f| goertzel(seg, SR, f));
                 let best = [1100.0, 1400.0, 1800.0][g
                     .iter()
                     .enumerate()
@@ -1016,23 +1296,42 @@ mod tests {
             let mut out = vec![0.0f32; start as usize + total];
             let mut fired = Vec::new();
             let mut from = start;
-            while from < start as u64 + total as u64 {
-                let end = (from + buf).min(start as u64 + total as u64);
+            while from < start + total as u64 {
+                let end = (from + buf).min(start + total as u64);
                 let mut ev = Vec::new();
-                tl.mix_into(&mut out[from as usize..end as usize], 1, from, &p, sr, &mut ev);
+                tl.mix_into(
+                    &mut out[from as usize..end as usize],
+                    1,
+                    from,
+                    &p,
+                    sr,
+                    &mut ev,
+                );
                 fired.extend(ev);
                 from = end;
             }
             // Events: beats cycle 0,1,2,3 — muted, low, muted, low.
             for (i, ev) in fired.iter().enumerate() {
                 let want = if i % 4 % 2 == 0 {
-                    Ev::Beat { beat: (i % 4) as u32, kind: Kind::Off }
+                    Ev::Beat {
+                        beat: (i % 4) as u32,
+                        kind: Kind::Off,
+                    }
                 } else {
-                    Ev::Beat { beat: (i % 4) as u32, kind: Kind::Low }
+                    Ev::Beat {
+                        beat: (i % 4) as u32,
+                        kind: Kind::Low,
+                    }
                 };
                 assert_eq!(*ev, want, "buf={} start={}: event {} wrong", buf, start, i);
             }
-            assert!(fired.len() >= 26, "buf={} start={}: only {} clicks in 15s", buf, start, fired.len());
+            assert!(
+                fired.len() >= 26,
+                "buf={} start={}: only {} clicks in 15s",
+                buf,
+                start,
+                fired.len()
+            );
             // Click frames: first at start+lead*sr, then +interval each.
             let first = start as f64 + lead * sr;
             let interval = 240.0 / (p.bpm * p.denominator as f64) * sr;
@@ -1045,18 +1344,33 @@ mod tests {
                     .iter()
                     .map(|s| s.abs())
                     .fold(0.0f32, f32::max);
-                if beat % 2 == 0 {
-                    assert_eq!(peak, 0.0,
-                        "buf={} start={}: muted beat at frame {} sounded (peak {})", buf, start, i, peak);
+                if beat & 1 == 0 {
+                    assert_eq!(
+                        peak, 0.0,
+                        "buf={} start={}: muted beat at frame {} sounded (peak {})",
+                        buf, start, i, peak
+                    );
                 } else {
-                    assert!(peak > 0.3,
-                        "buf={} start={}: audible beat at frame {} is silent (peak {})", buf, start, i, peak);
+                    assert!(
+                        peak > 0.3,
+                        "buf={} start={}: audible beat at frame {} is silent (peak {})",
+                        buf,
+                        start,
+                        i,
+                        peak
+                    );
                     audible += 1;
                 }
                 beat = (beat + 1) % 4;
                 f += interval;
             }
-            assert!(audible >= 13, "buf={} start={}: only {} audible windows", buf, start, audible);
+            assert!(
+                audible >= 13,
+                "buf={} start={}: only {} audible windows",
+                buf,
+                start,
+                audible
+            );
         }
     }
 }

@@ -35,19 +35,11 @@ pub mod ev {
     use super::{Json, Params};
 
     pub fn state(p: &Params) -> String {
-        let volume = (p.volume as f64 * 1000.0).round() / 1000.0;
-        Json::obj(vec![
-            ("t", Json::str("state")),
-            ("bpm", Json::Num(p.bpm)),
-            ("beats", Json::int(p.beats as i64)),
-            ("denominator", Json::int(p.denominator as i64)),
-            (
-                "voices",
-                Json::Arr(p.voices.iter().map(|v| Json::int(*v as i64)).collect()),
-            ),
-            ("volume", Json::Num(volume)),
-        ])
-        .render()
+        let Json::Obj(mut fields) = p.to_json() else {
+            unreachable!()
+        };
+        fields.insert(0, ("t".into(), Json::str("state")));
+        Json::Obj(fields).render()
     }
 
     pub fn ready(device: &str, rate: u32, silent: bool) -> String {
@@ -82,11 +74,7 @@ pub mod ev {
     }
 
     pub fn error(msg: &str) -> String {
-        Json::obj(vec![
-            ("t", Json::str("error")),
-            ("msg", Json::str(msg)),
-        ])
-        .render()
+        Json::obj(vec![("t", Json::str("error")), ("msg", Json::str(msg))]).render()
     }
 
     pub fn quitready() -> String {

@@ -10,7 +10,7 @@ pub fn exec_qs(ui: &Path) -> i32 {
     cmd.arg("-p").arg(ui.join("shell.qml"));
     // The backend binary the shell calls back into is this one, unless the
     // caller pinned it — PULSE_BIN is the dev seam, the same idea as FLEA_BIN.
-    if std::env::var_os("PULSE_BIN").map_or(true, |v| v.is_empty()) {
+    if std::env::var_os("PULSE_BIN").is_none_or(|v| v.is_empty()) {
         if let Ok(binary) = std::env::current_exe() {
             cmd.env("PULSE_BIN", binary);
         }
@@ -36,7 +36,9 @@ pub fn launch() -> i32 {
     match paths::ui_dir() {
         Some(ui) => exec_qs(&ui),
         None => {
-            eprintln!("pulse: the shell config is missing, set PULSE_UI or install /usr/share/pulse/ui");
+            eprintln!(
+                "pulse: the shell config is missing, set PULSE_UI or install /usr/share/pulse/ui"
+            );
             2
         }
     }
