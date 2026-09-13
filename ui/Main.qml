@@ -459,7 +459,7 @@ Item {
             }
 
             // --- the tempo: marking on top, the numeral between two steppers
-            // that sit on its own centre line, the unit beneath ---
+            // that sit on its own centre line ---
             Column {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Theme.space(4)
@@ -550,14 +550,6 @@ Item {
                         fillColor: Theme.color.lineSoft
                         onActivated: root.setBpm(root.bpm + 1)
                     }
-                }
-
-                Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "BPM"
-                    color: Theme.color.muted
-                    font.family: Theme.font.family
-                    font.pixelSize: Theme.font.caption
                 }
             }
 
