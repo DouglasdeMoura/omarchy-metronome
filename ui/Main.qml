@@ -21,7 +21,6 @@ Item {
     // meter.
     property var voices: [3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     property int currentBeat: -1
-    property int totalBeats: 0
     property string errorMessage: ""
 
     property var tapTimes: []
@@ -150,18 +149,15 @@ Item {
 
         function onStarted() {
             root.running = true
-            root.totalBeats = 0
         }
 
         function onBeat(beat, kind) {
             root.currentBeat = beat
-            root.totalBeats += 1
         }
 
         function onStopped(totalBeats) {
             root.running = false
             root.currentBeat = -1
-            root.totalBeats = totalBeats
         }
 
         function onFailed(message) {
@@ -368,9 +364,9 @@ Item {
     }
 
     // --- layout ---
-    // Three fixed rails: the chrome on top, the status strip pinned to the
-    // bottom, and the instrument itself centred in what is left over, so a
-    // tiled window and a floating one both read as composed, not stretched.
+    // Two fixed rails: the chrome on top and the instrument itself centred
+    // in what is left over, so a tiled window and a floating one both read
+    // as composed, not stretched.
     ChromeBar {
         id: chrome
         anchors.top: parent.top
@@ -379,18 +375,9 @@ Item {
         onClosed: root.closeRequested()
     }
 
-    StatusStrip {
-        id: status
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        totalBeats: root.totalBeats
-        error: root.errorMessage
-    }
-
     Item {
         anchors.top: chrome.bottom
-        anchors.bottom: status.top
+        anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
 
@@ -675,6 +662,19 @@ Item {
                 font.pixelSize: Theme.font.caption
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
+            }
+
+            // Only when something is wrong: the error under the hints, in
+            // urgent ink, the one place the window says so.
+            Text {
+                width: parent.width
+                visible: root.errorMessage.length > 0
+                text: root.errorMessage
+                color: Theme.color.urgent
+                font.family: Theme.font.family
+                font.pixelSize: Theme.font.caption
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
             }
         }
 
