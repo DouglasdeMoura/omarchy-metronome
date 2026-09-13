@@ -556,7 +556,7 @@ Item {
             // An outlined circle at rest; solid while the metronome runs ---
             Rectangle {
                 id: play
-                width: Theme.space(72)
+                width: Theme.space(88)
                 height: width
                 anchors.horizontalCenter: parent.horizontalCenter
                 radius: width / 2
@@ -575,7 +575,7 @@ Item {
                     text: root.running ? "■" : "▶"
                     color: root.running ? Theme.color.background : Theme.color.accent
                     font.family: Theme.font.family
-                    font.pixelSize: Theme.font.heading + 4
+                    font.pixelSize: Theme.font.display
                 }
 
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
@@ -586,17 +586,18 @@ Item {
             }
 
             // --- the meter and tap tempo: two equal buttons under the
-            // transport; the meter's frame lights while its editor is open ---
+            // transport, the steppers' height so the transport alone stands
+            // tall; the meter's frame lights while its editor is open ---
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Theme.space(12)
 
                 DialogButton {
                     id: tsButton
-                    width: Theme.space(104)
-                    height: Theme.space(40)
+                    width: Theme.space(84)
+                    height: Theme.space(36)
                     label: root.beats + "/" + root.denominator
-                    pixelSize: Theme.font.subtitle
+                    pixelSize: Theme.font.body
                     weight: Font.DemiBold
                     primary: root.tsOpen
                     onActivated: {
@@ -608,10 +609,10 @@ Item {
 
                 DialogButton {
                     id: tapButton
-                    width: Theme.space(104)
-                    height: Theme.space(40)
+                    width: Theme.space(84)
+                    height: Theme.space(36)
                     label: "Tap"
-                    pixelSize: Theme.font.subtitle
+                    pixelSize: Theme.font.body
                     onActivated: root.tap()
                 }
             }
