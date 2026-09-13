@@ -928,7 +928,7 @@ Item {
                                 anchors.leftMargin: Theme.spacing.rowPaddingX
                                 width: Theme.space(96)
                                 text: modelData[0]
-                                color: Theme.color.foreground
+                                color: Theme.color.muted
                                 font.family: Theme.font.family
                                 font.pixelSize: Theme.font.bodySmall
                             }
@@ -938,7 +938,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.rightMargin: Theme.spacing.rowPaddingX
                                 text: modelData[1]
-                                color: Theme.color.muted
+                                color: Theme.color.foreground
                                 font.family: Theme.font.family
                                 font.pixelSize: Theme.font.bodySmall
                                 elide: Text.ElideRight
