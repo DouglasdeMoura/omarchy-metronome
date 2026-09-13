@@ -499,33 +499,42 @@ mod audio {
             let device = host.default_output_device()?;
             let name = device.name().unwrap_or_else(|_| "unknown".to_string());
 
-            let supported = match device.default_output_config() {
+            // The plugin default can sit below the server's own rate (a
+            // PipeWire graph at 48 kHz answers 44.1), so every click would
+            // cross a resampler before the device — the fragile path for a
+            // 55 ms transient. Try 48 kHz first and fall back to the
+            // device's own default when it will not have it.
+            let default_cfg = match device.default_output_config() {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("pulse: the output device answered no config ({})", e);
                     return None;
                 }
             };
-            if supported.sample_format() != cpal::SampleFormat::F32 {
+            if default_cfg.sample_format() != cpal::SampleFormat::F32 {
                 eprintln!(
                     "pulse: the output device offered {:?}, and Pulse speaks f32 only",
-                    supported.sample_format()
+                    default_cfg.sample_format()
                 );
                 return None;
             }
-            let config: cpal::StreamConfig = supported.into();
-            let sample_rate = config.sample_rate.0;
-            let channels = config.channels as usize;
-            let sr = sample_rate as f64;
+            let mut config: cpal::StreamConfig = default_cfg.into();
+            config.sample_rate = cpal::SampleRate(48_000);
 
             let frame = Arc::new(AtomicU64::new(0));
-            let callback_frame = frame.clone();
-            let callback_shared = shared.clone();
-            let err_shared = shared.clone();
 
-            let stream = match device.build_output_stream(
-                &config,
-                move |data: &mut [f32], _| {
+            let stream: Option<(cpal::Stream, u32)>;
+            loop {
+                let sample_rate = config.sample_rate.0;
+                let channels = config.channels as usize;
+                let sr = sample_rate as f64;
+                let callback_frame = frame.clone();
+                let callback_shared = shared.clone();
+                let err_shared = shared.clone();
+
+                let built = device.build_output_stream(
+                    &config,
+                    move |data: &mut [f32], _| {
                     let s: &Shared = &callback_shared;
                     let running = s.running.load(Ordering::Acquire);
                     match s.pending.swap(0, Ordering::AcqRel) {
@@ -567,18 +576,32 @@ mod audio {
                     }
                 },
                 None,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("pulse: the output stream could not be built ({})", e);
-                    return None;
+                );
+                match built {
+                    Ok(s) => match s.play() {
+                        Ok(()) => {
+                            stream = Some((s, sample_rate));
+                            break;
+                        }
+                        Err(e) => {
+                            eprintln!("pulse: the output stream would not start at {} Hz ({})", sample_rate, e);
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("pulse: the output stream could not be built at {} Hz ({})", sample_rate, e);
+                    }
                 }
-            };
-
-            if let Err(e) = stream.play() {
-                eprintln!("pulse: the output stream would not start ({})", e);
+                if sample_rate == 48_000 {
+                    // Fall back to the device's own answer and try once more.
+                    if let Ok(def) = device.default_output_config() {
+                        config = def.into();
+                        continue;
+                    }
+                }
                 return None;
             }
+
+            let (stream, sample_rate) = stream?;
 
             Some(Output {
                 device_name: name,
@@ -897,5 +920,143 @@ mod tests {
         assert_eq!(p.beats, 3);
         assert_eq!(p.denominator, 4);
         assert_eq!(p.voices[0], VOICE_HIGH);
+    }
+
+    // Every voice must render its own tone on 4/4: silent stays silent, and
+    // low/medium/high each correlate strongest with their own frequency.
+    // Guards the "wrong tone / missing tone" report at the shared Timeline
+    // core both outputs play through.
+    #[test]
+    fn each_voice_renders_its_own_tone() {
+        fn goertzel(seg: &[f32], sr: f64, freq: f64) -> f64 {
+            let n = seg.len() as f64;
+            let k = (0.5 + freq * n / sr).floor();
+            let w = 2.0 * std::f64::consts::PI * k / n;
+            let (mut s1, mut s2) = (0.0f64, 0.0f64);
+            for &x in seg {
+                let s0 = x as f64 + 2.0 * w.cos() * s1 - s2;
+                s2 = s1;
+                s1 = s0;
+            }
+            (s1 * s1 + s2 * s2 - s1 * s2 * 2.0 * w.cos()).sqrt()
+        }
+        // voice value, expected kind, expected dominant freq (0 = silence)
+        for (voice, kind, freq) in [
+            (0u8, Kind::Off, 0.0),
+            (1u8, Kind::Low, 1100.0),
+            (2u8, Kind::Medium, 1400.0),
+            (3u8, Kind::High, 1800.0),
+        ] {
+            let mut p = params(120.0, 4, 4);
+            p.voices = [voice; 12];
+            let mut tl = Timeline::new();
+            tl.arm(0, 0.0, SR);
+            let mut out = vec![0.0f32; 48_000];
+            let mut events = Vec::new();
+            for from in (0..48_000).step_by(512) {
+                let end = (from + 512).min(48_000);
+                let mut ev = Vec::new();
+                tl.mix_into(&mut out[from..end], 1, from as u64, &p, SR, &mut ev);
+                events.extend(ev);
+            }
+            assert_eq!(
+                events,
+                vec![
+                    Ev::Beat { beat: 0, kind },
+                    Ev::Beat { beat: 1, kind },
+                ],
+                "voice {} must fire two {} beats in one second at 120bpm 4/4",
+                voice,
+                kind.wire()
+            );
+            let seg = &out[0..4000];
+            let peak = seg.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+            if freq == 0.0 {
+                assert_eq!(peak, 0.0, "silent voice must render no samples");
+            } else {
+                assert!(peak > 0.5, "voice {} must be audible (peak {})", voice, peak);
+                let g = [1100.0, 1400.0, 1800.0]
+                    .map(|f| goertzel(seg, SR, f));
+                let best = [1100.0, 1400.0, 1800.0][g
+                    .iter()
+                    .enumerate()
+                    .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                    .unwrap()
+                    .0];
+                assert_eq!(
+                    best, freq,
+                    "voice {} must sound {}Hz, not {:?}",
+                    voice, freq, g
+                );
+            }
+        }
+    }
+
+    // The reported pattern (2nd and 4th audible, 1st and 3rd muted) must
+    // survive every buffer shape and phase offset the device can hand over:
+    // audible clicks render their peak, muted windows render exact silence.
+    #[test]
+    fn audible_and_muted_beats_survive_every_buffer_shape() {
+        let sr = 44_100.0;
+        let mut p = params(113.0, 4, 4);
+        p.voices = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+        let total = 15 * 44_100usize;
+        for (buf, start, lead) in [
+            (64u64, 0u64, 0.0),
+            (256, 0, 0.0),
+            (512, 0, 0.0),
+            (1881, 0, 0.08),
+            (1882, 0, 0.08),
+            (1882, 98_490, 0.08), // arm mid-history, as the live callback does
+            (4096, 0, 0.08),
+            (997, 1111, 0.08),
+        ] {
+            let mut tl = Timeline::new();
+            tl.arm(start, lead, sr);
+            let mut out = vec![0.0f32; start as usize + total];
+            let mut fired = Vec::new();
+            let mut from = start;
+            while from < start as u64 + total as u64 {
+                let end = (from + buf).min(start as u64 + total as u64);
+                let mut ev = Vec::new();
+                tl.mix_into(&mut out[from as usize..end as usize], 1, from, &p, sr, &mut ev);
+                fired.extend(ev);
+                from = end;
+            }
+            // Events: beats cycle 0,1,2,3 — muted, low, muted, low.
+            for (i, ev) in fired.iter().enumerate() {
+                let want = if i % 4 % 2 == 0 {
+                    Ev::Beat { beat: (i % 4) as u32, kind: Kind::Off }
+                } else {
+                    Ev::Beat { beat: (i % 4) as u32, kind: Kind::Low }
+                };
+                assert_eq!(*ev, want, "buf={} start={}: event {} wrong", buf, start, i);
+            }
+            assert!(fired.len() >= 26, "buf={} start={}: only {} clicks in 15s", buf, start, fired.len());
+            // Click frames: first at start+lead*sr, then +interval each.
+            let first = start as f64 + lead * sr;
+            let interval = 240.0 / (p.bpm * p.denominator as f64) * sr;
+            let mut f = first;
+            let mut beat = 0u32;
+            let mut audible = 0;
+            while (f as usize) + 4000 <= out.len() {
+                let i = f as usize;
+                let peak = out[i..i + 4000]
+                    .iter()
+                    .map(|s| s.abs())
+                    .fold(0.0f32, f32::max);
+                if beat % 2 == 0 {
+                    assert_eq!(peak, 0.0,
+                        "buf={} start={}: muted beat at frame {} sounded (peak {})", buf, start, i, peak);
+                } else {
+                    assert!(peak > 0.3,
+                        "buf={} start={}: audible beat at frame {} is silent (peak {})", buf, start, i, peak);
+                    audible += 1;
+                }
+                beat = (beat + 1) % 4;
+                f += interval;
+            }
+            assert!(audible >= 13, "buf={} start={}: only {} audible windows", buf, start, audible);
+        }
     }
 }

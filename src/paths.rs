@@ -42,6 +42,11 @@ pub fn has_display() -> bool {
     })
 }
 
+// Whether a Pulse backend already holds the single-instance lock.
+pub fn backend_running() -> bool {
+    crate::backend::run::instance_is_running()
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

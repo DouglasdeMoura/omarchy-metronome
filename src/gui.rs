@@ -22,6 +22,13 @@ pub fn exec_qs(ui: &Path) -> i32 {
 }
 
 pub fn launch() -> i32 {
+    // One Pulse at a time: a second metronome half a beat out from the first
+    // makes ticks fuse and vanish. Answer before a window is spawned so the
+    // second launch is a polite no-op, not a broken shell.
+    if paths::backend_running() {
+        eprintln!("pulse: another Pulse is already running");
+        return 0;
+    }
     if !paths::has_display() {
         eprintln!("pulse: there is no graphical session to open a window in");
         return 2;

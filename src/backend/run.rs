@@ -1,12 +1,83 @@
 use super::engine;
 use super::proto::{self, Command};
 use std::io::BufRead;
+use std::os::unix::fs::OpenOptionsExt;
 
 // pulse --backend: one json line per request on stdin, one json line per event
 // on stdout. The process lives exactly as long as its stdin does, so a dead
 // shell never leaves an orphan holding the audio device.
 
+// One Pulse at a time: two metronomes playing the same bar a beat-length
+// apart fuse and mask each other's clicks, and the player hears ticks
+// vanish at random positions. The lock file is held for the backend's
+// whole life; flock releases it even on a crash, so it never goes stale.
+
+pub fn lock_path() -> Option<std::path::PathBuf> {
+    // std has no getuid; /proc/self/status is the std-only answer, and the
+    // number is only a namespace for the file name.
+    let uid = std::fs::read_to_string("/proc/self/status").ok().and_then(|s| {
+        s.lines().find_map(|l| {
+            l.strip_prefix("Uid:")
+                .and_then(|rest| rest.split_whitespace().next())
+                .and_then(|v| v.parse::<u32>().ok())
+        })
+    });
+    let name = match uid {
+        Some(id) => format!("pulse-{}.lock", id),
+        None => "pulse.lock".to_string(),
+    };
+    match std::env::var_os("XDG_RUNTIME_DIR") {
+        Some(v) if !v.is_empty() => Some(std::path::PathBuf::from(v).join(name)),
+        _ => Some(std::path::PathBuf::from("/tmp").join(name)),
+    }
+}
+
+// Try to become the one Pulse. Ok(file) holds the lock for the process's
+// life; Err means another Pulse is already running.
+pub fn acquire_instance_lock() -> Result<std::fs::File, String> {
+    let path = lock_path().ok_or_else(|| "no runtime directory for the lock".to_string())?;
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .open(&path)
+        .map_err(|e| format!("{} could not be opened ({})", path.display(), e))?;
+    file.try_lock()
+        .map(|()| file)
+        .map_err(|_| format!("another Pulse is already running ({})", path.display()))
+}
+
+// A lock held by nobody: used by the GUI launch for a cheap early answer.
+pub fn instance_is_running() -> bool {
+    let Some(path) = lock_path() else { return false };
+    let Ok(file) = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+    else {
+        return false;
+    };
+    file.try_lock().is_err()
+}
+
 pub fn run() -> i32 {
+    // The lock lives in this binding on purpose: dropping it would hand the
+    // single-instance claim back while the backend is still running.
+    let _instance_lock = match acquire_instance_lock() {
+        Ok(f) => f,
+        Err(msg) => {
+            // The fresh shell gets the reason on the wire, where its error
+            // strip shows it, and on stderr for the logs.
+            eprintln!("pulse: {}", msg);
+            let _ = proto::emit(&proto::ev::error("another Pulse is already running"));
+            return 2;
+        }
+    };
+
     // PULSE_SILENT forces the silent clock, so a headless box or a test can
     // exercise the whole protocol without an audio device in the room.
     let silent_forced = std::env::var_os("PULSE_SILENT").is_some_and(|v| !v.is_empty());
