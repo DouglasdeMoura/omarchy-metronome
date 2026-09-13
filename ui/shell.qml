@@ -20,8 +20,9 @@ ShellRoot {
     FloatingWindow {
         id: window
         title: "Pulse"
-        implicitWidth: 380
-        implicitHeight: 600
+        // A golden window: 377 by 610, two neighbours on the Fibonacci run.
+        implicitWidth: 377
+        implicitHeight: 610
         color: Theme.color.background
 
         Rectangle {

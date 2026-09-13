@@ -10,7 +10,7 @@ Rectangle {
     // The keyboard focus ring cycles through here too.
     readonly property alias closeItem: close
 
-    readonly property int height_: Theme.space(38)
+    readonly property int height_: Theme.golden(3)
 
     color: "transparent"
 
@@ -30,10 +30,10 @@ Rectangle {
         glyph: "✕"
         glyphSize: Theme.font.bodySmall
         anchors.right: parent.right
-        anchors.rightMargin: Theme.space(6)
+        anchors.rightMargin: Theme.golden(0)
         anchors.verticalCenter: parent.verticalCenter
-        width: Theme.space(28)
-        height: root.height_ - Theme.space(8)
+        width: Theme.golden(2)
+        height: Theme.golden(2)
         onActivated: root.closed()
     }
 }

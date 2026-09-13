@@ -396,13 +396,14 @@ Item {
         Column {
             id: content
             width: Math.min(parent.width, Theme.space(320))
-            // The vertical rhythm is one ladder, 8 13 21 34, each step phi
-            // of the last: a caption sits 8 from its numeral, the buttons
-            // 21 from the transport they serve, and the three bands, beats,
-            // tempo, transport, stand 34 apart.
-            spacing: Theme.space(34)
+            // Every dimension on this view is a step of Theme.golden, so any
+            // two of them are related by a power of phi. The vertical rhythm:
+            // a caption sits golden(0) from its numeral, the buttons golden(2)
+            // from the transport they serve, and the three bands, beats,
+            // tempo, transport, stand golden(3) apart.
+            spacing: Theme.golden(3)
             x: (parent.width - width) / 2
-            y: Math.max(Theme.space(16), (parent.height - height) / 2)
+            y: Math.max(Theme.golden(2), (parent.height - height) / 2)
 
             // --- per-beat voices, on top of the circle: click to raise ---
             // Empty is silence; one, two or three filled bars are the low,
@@ -411,16 +412,17 @@ Item {
                 id: meters
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Sixteen meters still have to fit the column: past twelve
-                // the gaps close up first, then the boxes give up width.
-                spacing: Theme.space(root.beats > 12 ? 4 : 8)
+                // the gaps close up first, then the bars give up width.
+                spacing: root.beats > 12 ? Theme.golden(-1) : Theme.golden(1)
                 readonly property int rectWidth: Math.min(
-                    Theme.space(26),
+                    Theme.golden(2),
                     Math.floor((Theme.space(320) - (root.beats - 1) * spacing) / root.beats))
-                // Each bar is a golden rectangle, lying down; the beat's
-                // height follows from three of them and the gaps between.
-                readonly property int barWidth: rectWidth - Theme.space(8)
-                readonly property int barHeight: Math.round(barWidth / 1.618)
-                readonly property int barGap: Theme.space(4)
+                // Each bar is a golden rectangle, lying down, golden(2) by
+                // golden(1) at full width; the beat is the bar's own width,
+                // and its height follows from three bars and the gaps between.
+                readonly property int barWidth: rectWidth
+                readonly property int barHeight: Math.round(barWidth / Theme.phi)
+                readonly property int barGap: Theme.golden(-1)
 
                 Repeater {
                     id: metersRepeater
@@ -431,7 +433,7 @@ Item {
                         readonly property int voice: root.voices[index]
                         readonly property bool isNow: root.running && root.currentBeat === index
                         width: meters.rectWidth
-                        height: 3 * meters.barHeight + 2 * meters.barGap + Theme.space(8)
+                        height: 3 * meters.barHeight + 2 * meters.barGap
                         radius: 0
                         color: "transparent"
 
@@ -466,7 +468,7 @@ Item {
             // that sit on its own centre line ---
             Column {
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Theme.space(8)
+                spacing: Theme.golden(0)
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -479,15 +481,15 @@ Item {
 
                 Row {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Theme.space(12)
+                    spacing: Theme.golden(1)
 
                     DialogButton {
                         id: bpmMinusBtn
                         anchors.verticalCenter: parent.verticalCenter
-                        width: Theme.space(36)
-                        height: Theme.space(36)
+                        width: Theme.golden(3)
+                        height: Theme.golden(3)
                         label: "−"
-                        pixelSize: Theme.font.heading
+                        pixelSize: Theme.golden(2)
                         framed: false
                         fillColor: Theme.color.lineSoft
                         onActivated: root.setBpm(root.bpm - 1)
@@ -500,15 +502,30 @@ Item {
                     // up by that much and overflows its box freely.
                     Item {
                         id: heroBox
-                        // Room for four digits at the hero size, so the
-                        // steppers hold still while the number changes.
-                        width: Theme.space(150)
+                        // Room for four digits, so the steppers hold still
+                        // while the number changes.
+                        width: Math.round(4 * digitInk.advanceWidth / 10)
                         height: Math.round(digitInk.tightBoundingRect.height)
+
+                        // The numeral is sized by its ink, not its font: the
+                        // digits stand golden(4) tall, one step over the play
+                        // circle's glyph and one under the circle itself. A
+                        // probe at 100 says how tall the face's digits are per
+                        // pixel of size; the size follows.
+                        readonly property int fontSize: Math.round(Theme.golden(4) * 100 / Math.max(1, inkProbe.tightBoundingRect.height))
+
+                        TextMetrics {
+                            id: inkProbe
+                            font.family: Theme.font.family
+                            font.pixelSize: 100
+                            font.weight: Font.DemiBold
+                            text: "0123456789"
+                        }
 
                         TextMetrics {
                             id: digitInk
                             font.family: Theme.font.family
-                            font.pixelSize: Theme.font.hero
+                            font.pixelSize: heroBox.fontSize
                             font.weight: Font.DemiBold
                             text: "0123456789"
                         }
@@ -524,7 +541,7 @@ Item {
                         selectionColor: Qt.alpha(Theme.color.accent, 0.35)
                         selectedTextColor: Theme.color.background
                         font.family: Theme.font.family
-                        font.pixelSize: Theme.font.hero
+                        font.pixelSize: heroBox.fontSize
                         font.weight: Font.DemiBold
                         horizontalAlignment: Text.AlignHCenter
                         validator: IntValidator { bottom: 1; top: 4000 }
@@ -568,10 +585,10 @@ Item {
                     DialogButton {
                         id: bpmPlusBtn
                         anchors.verticalCenter: parent.verticalCenter
-                        width: Theme.space(36)
-                        height: Theme.space(36)
+                        width: Theme.golden(3)
+                        height: Theme.golden(3)
                         label: "+"
-                        pixelSize: Theme.font.heading
+                        pixelSize: Theme.golden(2)
                         framed: false
                         fillColor: Theme.color.lineSoft
                         onActivated: root.setBpm(root.bpm + 1)
@@ -580,16 +597,16 @@ Item {
             }
 
             // --- the transport band: the play circle, and the meter and tap
-            // beneath it at the ladder's 21 ---
+            // beneath it at golden(2) ---
             Column {
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Theme.space(21)
+                spacing: Theme.golden(2)
 
                 // --- the transport: the one accent on the view, dead centre.
                 // An outlined circle at rest; solid while the metronome runs ---
                 Rectangle {
                     id: play
-                    width: Theme.space(88)
+                    width: Theme.golden(5)
                     height: width
                     anchors.horizontalCenter: parent.horizontalCenter
                     radius: width / 2
@@ -608,7 +625,8 @@ Item {
                         text: root.running ? "■" : "▶"
                         color: root.running ? Theme.color.background : Theme.color.accent
                         font.family: Theme.font.family
-                        font.pixelSize: Theme.font.display
+                        // Two steps inside the circle: 89, 55, 34.
+                        font.pixelSize: Theme.golden(3)
                     }
 
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
@@ -623,12 +641,12 @@ Item {
                 // alone stands out; the meter's ink lights while its editor is open ---
                 Row {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Theme.space(12)
+                    spacing: Theme.golden(1)
 
                     DialogButton {
                         id: tsButton
-                        width: Math.round(height * 1.618)
-                        height: Theme.space(36)
+                        width: Theme.golden(4)
+                        height: Theme.golden(3)
                         label: root.beats + "/" + root.denominator
                         pixelSize: Theme.font.body
                         framed: false
@@ -644,8 +662,8 @@ Item {
 
                     DialogButton {
                         id: tapButton
-                        width: Math.round(height * 1.618)
-                        height: Theme.space(36)
+                        width: Theme.golden(4)
+                        height: Theme.golden(3)
                         label: "Tap"
                         pixelSize: Theme.font.body
                         framed: false

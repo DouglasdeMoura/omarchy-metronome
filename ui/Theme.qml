@@ -62,8 +62,8 @@ Singleton {
         readonly property int title: Math.round(baseSize * 14 / 12)
         readonly property int heading: Math.round(baseSize * 16 / 12)
         readonly property int display: Math.round(baseSize * 24 / 12)
-        // The hero numeral is the one place Pulse outgrows the shell ladder.
-        readonly property int hero: Math.round(baseSize * 64 / 12)
+        // The hero numeral is not a token: Main.qml sizes it by ink, so its
+        // digits stand golden(4) tall.
     }
 
     // shell.toml [spacing] scale, the same multiplier the bar applies.
@@ -71,6 +71,15 @@ Singleton {
 
     function space(px) {
         return Math.round(px * spacingScale)
+    }
+
+    // The golden ladder the main view is drawn from: 8 at the shell's
+    // scale, each step phi of the last. golden(0) is 8, then 13, 21, 34, 55,
+    // 89, 144; golden(-1) is 5 and golden(-2) is 3. Two things related by
+    // one step of the ladder are related by the golden ratio.
+    readonly property real phi: 1.6180339887
+    function golden(n) {
+        return Math.round(8 * Math.pow(phi, n) * spacingScale)
     }
 
     // Flea's dialog frame tokens at the shell's defaults, so a card here
