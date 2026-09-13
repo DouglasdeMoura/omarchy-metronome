@@ -8,14 +8,20 @@ Item {
 
     property string label: ""
     property bool primary: false
+    // The main view draws the same button larger and heavier; a dialog's
+    // action keeps the defaults.
+    property real horizontalPadding: Theme.spacing.gap
+    property real verticalPadding: Theme.spacing.gap / 2
+    property int pixelSize: Theme.font.body
+    property int weight: Font.Normal
 
     signal activated()
 
     readonly property color frame: root.primary ? Theme.color.accent : Theme.color.muted
     readonly property color ink: root.primary ? Theme.color.accent : Theme.color.foreground
 
-    implicitWidth: Math.max(Theme.hitMin, text.implicitWidth + 2 * Theme.spacing.gap + 2 * Theme.spacing.hairline)
-    implicitHeight: Math.max(Theme.hitMin, text.implicitHeight + Theme.spacing.gap + 2 * Theme.spacing.hairline)
+    implicitWidth: Math.max(Theme.hitMin, text.implicitWidth + 2 * horizontalPadding + 2 * Theme.spacing.hairline)
+    implicitHeight: Math.max(Theme.hitMin, text.implicitHeight + 2 * verticalPadding + 2 * Theme.spacing.hairline)
     scale: tap.pressed && !Theme.reducedMotion ? 0.96 : 1
 
     Behavior on scale {
@@ -36,7 +42,8 @@ Item {
         text: root.label
         color: root.ink
         font.family: Theme.font.family
-        font.pixelSize: Theme.font.body
+        font.pixelSize: root.pixelSize
+        font.weight: root.weight
     }
 
     HoverHandler { cursorShape: Qt.PointingHandCursor }

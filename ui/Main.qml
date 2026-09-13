@@ -396,7 +396,7 @@ Item {
         Column {
             id: content
             width: Math.min(parent.width, Theme.space(320))
-            spacing: Theme.space(16)
+            spacing: Theme.space(24)
             x: (parent.width - width) / 2
             y: Math.max(Theme.space(16), (parent.height - height) / 2)
 
@@ -425,8 +425,8 @@ Item {
                         height: Theme.space(38)
                         radius: 0
                         color: "transparent"
-                        border.width: isNow ? 2 : 1
-                        border.color: isNow ? Theme.color.accent : Theme.color.line
+                        border.width: isNow ? 2 * Theme.spacing.hairline : Theme.spacing.hairline
+                        border.color: isNow ? Theme.color.accent : Theme.color.muted
 
                         // The bars stack from the bottom, so the fill reads
                         // as a level: one bar low, three high.
@@ -453,48 +453,40 @@ Item {
                 }
             }
 
-            // --- the tempo: marking on top, number between the steppers ---
-            Text {
+            // --- the tempo: marking on top, the numeral between two steppers
+            // that sit on its own centre line, the unit beneath ---
+            Column {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: root.tempoName
-                color: Theme.color.muted
-                font.family: Theme.font.family
-                font.pixelSize: Theme.font.caption
-                font.capitalization: Font.AllUppercase
-            }
+                spacing: Theme.space(4)
 
-            Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Theme.space(16)
-
-                Rectangle {
-                    id: bpmMinusBtn
-                    width: Theme.space(30)
-                    height: Theme.space(30)
-                    radius: 0
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: bpmMinus.pressed ? Qt.alpha(Theme.color.accent, 0.18) : Theme.color.lineSoft
-                    border.width: 1
-                    border.color: Theme.color.lineSoft
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "−"
-                        color: Theme.color.foreground
-                        font.family: Theme.font.family
-                        font.pixelSize: Theme.font.body
-                    }
-
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler { id: bpmMinus; onTapped: root.setBpm(root.bpm - 1) }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: root.tempoName
+                    color: Theme.color.muted
+                    font.family: Theme.font.family
+                    font.pixelSize: Theme.font.caption
+                    font.capitalization: Font.AllUppercase
                 }
 
-                Column {
-                    spacing: Theme.space(2)
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: Theme.space(12)
+
+                    DialogButton {
+                        id: bpmMinusBtn
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Theme.space(36)
+                        height: Theme.space(36)
+                        label: "−"
+                        pixelSize: Theme.font.heading
+                        onActivated: root.setBpm(root.bpm - 1)
+                    }
 
                     TextInput {
                         id: hero
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        // Room for four digits at the hero size, so the
+                        // steppers hold still while the number changes.
+                        width: Theme.space(150)
                         text: Math.round(root.bpm)
                         color: Theme.color.foreground
                         selectionColor: Qt.alpha(Theme.color.accent, 0.35)
@@ -540,53 +532,42 @@ Item {
                         }
                     }
 
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: "BPM"
-                        color: Theme.color.muted
-                        font.family: Theme.font.family
-                        font.pixelSize: Theme.font.caption
+                    DialogButton {
+                        id: bpmPlusBtn
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Theme.space(36)
+                        height: Theme.space(36)
+                        label: "+"
+                        pixelSize: Theme.font.heading
+                        onActivated: root.setBpm(root.bpm + 1)
                     }
                 }
 
-                Rectangle {
-                    id: bpmPlusBtn
-                    width: Theme.space(30)
-                    height: Theme.space(30)
-                    radius: 0
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: bpmPlus.pressed ? Qt.alpha(Theme.color.accent, 0.18) : Theme.color.lineSoft
-                    border.width: 1
-                    border.color: Theme.color.lineSoft
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "+"
-                        color: Theme.color.foreground
-                        font.family: Theme.font.family
-                        font.pixelSize: Theme.font.body
-                    }
-
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler { id: bpmPlus; onTapped: root.setBpm(root.bpm + 1) }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "BPM"
+                    color: Theme.color.muted
+                    font.family: Theme.font.family
+                    font.pixelSize: Theme.font.caption
                 }
             }
 
-            // --- the transport: one prominent circle, dead centre ---
+            // --- the transport: the one accent on the view, dead centre.
+            // An outlined circle at rest; solid while the metronome runs ---
             Rectangle {
                 id: play
-                width: Theme.space(68)
+                width: Theme.space(72)
                 height: width
                 anchors.horizontalCenter: parent.horizontalCenter
                 radius: width / 2
-                color: root.running ? Theme.color.accent : Qt.alpha(Theme.color.accent, 0.16)
-                border.width: 1
-                border.color: root.running ? Theme.color.accent : Qt.alpha(Theme.color.accent, 0.45)
-                scale: playTap.pressed && !Theme.reducedMotion ? 0.94 : 1
+                color: root.running ? Theme.color.accent : "transparent"
+                border.width: 2 * Theme.spacing.hairline
+                border.color: Theme.color.accent
+                scale: playTap.pressed && !Theme.reducedMotion ? 0.96 : 1
 
                 Behavior on scale {
                     enabled: !Theme.reducedMotion
-                    NumberAnimation { duration: 120 }
+                    NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
                 }
 
                 Text {
@@ -604,64 +585,34 @@ Item {
                 }
             }
 
-            // --- the time signature: one button, the editor opens over all ---
+            // --- the meter and tap tempo: two equal buttons under the
+            // transport; the meter's frame lights while its editor is open ---
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Theme.space(10)
+                spacing: Theme.space(12)
 
-                Rectangle {
+                DialogButton {
                     id: tsButton
-                    width: Theme.space(76)
-                    height: Theme.space(38)
-                    color: tsTap.pressed ? Qt.alpha(Theme.color.accent, 0.18) : Theme.color.lineSoft
-                    border.width: 1
-                    border.color: root.tsOpen ? Theme.color.accent : Theme.color.line
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: root.beats + "/" + root.denominator
-                        color: Theme.color.foreground
-                        font.family: Theme.font.family
-                        font.pixelSize: Theme.font.subtitle
-                        font.weight: Font.DemiBold
-                    }
-
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler {
-                        id: tsTap
-                        onTapped: {
-                            root.tsOpen = !root.tsOpen
-                            root.focusIndex = -1
-                            root.rebuildRing()
-                        }
+                    width: Theme.space(104)
+                    height: Theme.space(40)
+                    label: root.beats + "/" + root.denominator
+                    pixelSize: Theme.font.subtitle
+                    weight: Font.DemiBold
+                    primary: root.tsOpen
+                    onActivated: {
+                        root.tsOpen = !root.tsOpen
+                        root.focusIndex = -1
+                        root.rebuildRing()
                     }
                 }
 
-                // Tap tempo rides beside the signature, a secondary control
-                // beside the transport it serves.
-                Rectangle {
+                DialogButton {
                     id: tapButton
-                    width: Theme.space(60)
-                    height: Theme.space(30)
-                    anchors.verticalCenter: parent.verticalCenter
-                    radius: 0
-                    color: tapTap.pressed ? Qt.alpha(Theme.color.accent, 0.18) : Theme.color.lineSoft
-                    border.width: 1
-                    border.color: Theme.color.lineSoft
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Tap"
-                        color: Theme.color.foreground
-                        font.family: Theme.font.family
-                        font.pixelSize: Theme.font.bodySmall
-                    }
-
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler {
-                        id: tapTap
-                        onTapped: root.tap()
-                    }
+                    width: Theme.space(104)
+                    height: Theme.space(40)
+                    label: "Tap"
+                    pixelSize: Theme.font.subtitle
+                    onActivated: root.tap()
                 }
             }
 
