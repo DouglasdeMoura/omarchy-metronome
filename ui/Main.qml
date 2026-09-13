@@ -714,6 +714,7 @@ Item {
             color: Theme.color.surface
             border.width: Theme.spacing.hairline
             border.color: Theme.color.muted
+            radius: Theme.cornerRadius
 
             // The panel's own click-swallowing surface: a press between the
             // controls belongs to the dialog, never to the cancel-scrim.
