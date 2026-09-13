@@ -18,6 +18,9 @@ Item {
     // that should sit back from the ones it serves.
     property bool framed: true
     property color fillColor: "transparent"
+    // A button may carry a drawn figure instead of a label: children land
+    // centred, and the label stays empty.
+    default property alias content: slot.data
 
     signal activated()
 
@@ -40,9 +43,17 @@ Item {
         border.color: root.frame
     }
 
+    Item {
+        id: slot
+        anchors.centerIn: parent
+        width: childrenRect.width
+        height: childrenRect.height
+    }
+
     Text {
         id: text
         anchors.centerIn: parent
+        visible: root.label.length > 0
         text: root.label
         color: root.ink
         font.family: Theme.font.family

@@ -716,16 +716,21 @@ Item {
                         onActivated: root.tap()
                     }
 
-                    // The subdivision: ticks per beat, its editor over all.
+                    // The subdivision: the figure the beat splits into, its
+                    // editor over all.
                     DialogButton {
                         id: subButton
                         width: Theme.golden(4)
                         height: Theme.golden(3)
-                        label: "÷" + root.subdivision
-                        pixelSize: Theme.font.body
                         framed: false
                         fillColor: Theme.color.lineSoft
                         primary: root.subOpen
+
+                        NoteFigure {
+                            beatValue: root.denominator
+                            division: root.subdivision
+                            ink: subButton.ink
+                        }
                         onActivated: {
                             root.subOpen = !root.subOpen
                             root.focusIndex = -1
