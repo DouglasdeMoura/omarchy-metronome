@@ -14,6 +14,10 @@ Item {
     property real verticalPadding: Theme.spacing.gap / 2
     property int pixelSize: Theme.font.body
     property int weight: Font.Normal
+    // A quiet variant: a soft fill in place of the frame, for a control
+    // that should sit back from the ones it serves.
+    property bool framed: true
+    property color fillColor: "transparent"
 
     signal activated()
 
@@ -31,8 +35,8 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "transparent"
-        border.width: Theme.spacing.hairline
+        color: root.fillColor
+        border.width: root.framed ? Theme.spacing.hairline : 0
         border.color: root.frame
     }
 

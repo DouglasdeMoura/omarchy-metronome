@@ -484,6 +484,8 @@ Item {
                         height: Theme.space(36)
                         label: "−"
                         pixelSize: Theme.font.heading
+                        framed: false
+                        fillColor: Theme.color.lineSoft
                         onActivated: root.setBpm(root.bpm - 1)
                     }
 
@@ -544,6 +546,8 @@ Item {
                         height: Theme.space(36)
                         label: "+"
                         pixelSize: Theme.font.heading
+                        framed: false
+                        fillColor: Theme.color.lineSoft
                         onActivated: root.setBpm(root.bpm + 1)
                     }
                 }
