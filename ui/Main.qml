@@ -425,11 +425,10 @@ Item {
                         height: Theme.space(38)
                         radius: 0
                         color: "transparent"
-                        border.width: isNow ? 2 * Theme.spacing.hairline : Theme.spacing.hairline
-                        border.color: isNow ? Theme.color.accent : Theme.color.muted
 
                         // The bars stack from the bottom, so the fill reads
-                        // as a level: one bar low, three high.
+                        // as a level: one bar low, three high. No frame: the
+                        // playing beat is the one whose empty bars light up.
                         Column {
                             anchors.centerIn: parent
                             spacing: Theme.space(1)
@@ -442,7 +441,8 @@ Item {
                                     width: pick.width - Theme.space(8)
                                     height: (pick.height - Theme.space(8)) / 3
                                     radius: 0
-                                    color: fillOrder < pick.voice ? Theme.color.accent : Theme.color.lineSoft
+                                    color: fillOrder < pick.voice ? Theme.color.accent
+                                         : pick.isNow ? Theme.color.line : Theme.color.lineSoft
                                 }
                             }
                         }
