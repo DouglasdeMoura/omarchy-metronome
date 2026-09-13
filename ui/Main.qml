@@ -412,14 +412,11 @@ Item {
                 height: barArea + Theme.space(4) + Theme.font.caption + Theme.space(4)
 
                 readonly property int barArea: Theme.space(40)
-                // The bar's inset in its slot; a narrow slot gives some back
-                // so a sixteen-beat bar is still a bar.
-                readonly property int inset: Math.max(Theme.space(1), Math.min(Theme.space(3), Math.floor(barWidth / 5)))
                 // Sixteen bars still have to fit the column: past twelve the
                 // gaps close up first, then the bars give up width.
                 readonly property int gap: Theme.space(root.beats > 12 ? 6 : 10)
                 readonly property int barWidth: Math.min(
-                    Theme.space(26),
+                    Theme.space(22),
                     Math.floor((Theme.space(320) - (root.beats - 1) * gap) / root.beats))
 
                 Rectangle {
@@ -456,14 +453,10 @@ Item {
                                 color: hover.hovered ? Theme.color.line : Theme.color.lineSoft
                             }
 
-                            // The bar sits inset in its slot, so the slot
-                            // reads as the frame of a control and the bar as
-                            // its level.
                             Rectangle {
                                 anchors.bottom: parent.top
                                 anchors.bottomMargin: -meters.barArea
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: parent.width - 2 * meters.inset
+                                width: parent.width
                                 height: pick.voice === 0 ? 2 * Theme.spacing.hairline
                                                          : Math.round(meters.barArea * pick.voice / 3)
                                 color: pick.lit ? Theme.color.accent
