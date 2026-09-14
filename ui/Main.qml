@@ -1093,8 +1093,8 @@ Item {
                     CellBand { id: subBandD; cells: Rhythm.tilesFor(5).concat(Rhythm.tilesFor(6)) }
                 }
 
-                // The ticks, under a rule: one square per figure of the
-                // chosen cell, tapped on or off. Every cell the engine can
+                // The notes, under a rule: one square per figure of the
+                // chosen cell, a note when solid, a rest when tapped off. Every cell the engine can
                 // play is a full tile and a few taps away; the tiles above
                 // are the common ones.
                 Item {
@@ -1121,7 +1121,7 @@ Item {
                         Text {
                             width: Theme.golden(4)
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "TICKS"
+                            text: "NOTES"
                             color: Theme.color.muted
                             font.family: Theme.font.family
                             font.pixelSize: Theme.font.caption
