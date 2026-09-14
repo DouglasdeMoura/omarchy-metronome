@@ -18,7 +18,8 @@ Canvas {
     readonly property var cell: Rhythm.cell(division, mask)
     readonly property int tuplet: Rhythm.tuplet(division)
 
-    readonly property real unit: Theme.font.body
+    // The figure's scale: the body size by default, smaller for a chip.
+    property real unit: Theme.font.body
     readonly property real headRx: unit * 0.32
     readonly property real headRy: unit * 0.23
     readonly property real stemH: unit * 1.15

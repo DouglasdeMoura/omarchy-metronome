@@ -1114,7 +1114,7 @@ Item {
                         spacing: Theme.golden(-1)
 
                         Text {
-                            width: Theme.golden(4)
+                            width: Theme.golden(3)
                             anchors.verticalCenter: parent.verticalCenter
                             text: "GRID"
                             color: Theme.color.muted
@@ -1122,20 +1122,31 @@ Item {
                             font.pixelSize: Theme.font.caption
                         }
 
+                        // One chip per grid, each a tiny figure of the plain
+                        // division: the beat, halves, a triplet, quarters,
+                        // a quintuplet, a sextuplet.
                         Repeater {
                             id: subGridChips
                             model: 6
 
                             DialogButton {
+                                id: gridChip
                                 readonly property int grid: index + 1
-                                width: Theme.golden(2)
-                                height: Theme.golden(2)
-                                label: String(grid)
-                                pixelSize: Theme.font.caption
+                                width: chipFigure.implicitWidth + Theme.golden(-1) * 2
+                                height: Theme.golden(2) + Theme.golden(-1)
                                 framed: false
                                 fillColor: subPanel.draftDivision === grid ? Qt.alpha(Theme.color.accent, 0.12) : Theme.color.lineSoft
                                 primary: subPanel.draftDivision === grid
                                 onActivated: subPanel.setGrid(grid)
+
+                                NoteFigure {
+                                    id: chipFigure
+                                    unit: Theme.golden(0)
+                                    beatValue: root.denominator
+                                    division: gridChip.grid
+                                    mask: (1 << gridChip.grid) - 1
+                                    ink: gridChip.ink
+                                }
                             }
                         }
                     }
@@ -1145,7 +1156,7 @@ Item {
                         spacing: Theme.golden(-1)
 
                         Text {
-                            width: Theme.golden(4)
+                            width: Theme.golden(3)
                             anchors.verticalCenter: parent.verticalCenter
                             text: "TICKS"
                             color: Theme.color.muted
