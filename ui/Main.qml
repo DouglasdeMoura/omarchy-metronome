@@ -8,6 +8,11 @@ import "Rhythm.js" as Rhythm
 Item {
     id: root
 
+    // A right-to-left language mirrors the layout; the beats, the time
+    // signature and the notation stay left to right, set where they live.
+    LayoutMirroring.enabled: I18n.rtl
+    LayoutMirroring.childrenInherit: true
+
     property var backend: null
 
     signal closeRequested()
@@ -22,7 +27,12 @@ Item {
     // meter.
     property var voices: [3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     property int currentBeat: -1
-    property string errorMessage: ""
+    // The caption under the controls: a failure the backend or the bridge
+    // reported, else the silent-output notice. Bound, so it retranslates.
+    property string failure: ""
+    property bool silentOutput: false
+    readonly property string errorMessage: failure.length > 0 ? failure
+                                         : silentOutput ? I18n.tr("error.silent") : ""
 
     property var tapTimes: []
     // The beat's cell: a grid of 1 to 6 slots and the mask of slots that
@@ -49,17 +59,17 @@ Item {
     // The classical markings, as bands: what the beat is relative to. The
     // bounds are the usual metronome tables, one band per name.
     readonly property var tempoBands: [
-        { name: "Larghissimo", max: 20 },
-        { name: "Grave", max: 40 },
-        { name: "Largo", max: 60 },
-        { name: "Adagio", max: 76 },
-        { name: "Andante", max: 108 },
-        { name: "Moderato", max: 120 },
-        { name: "Allegretto", max: 156 },
-        { name: "Allegro", max: 176 },
-        { name: "Vivace", max: 200 },
-        { name: "Presto", max: 240 },
-        { name: "Prestissimo", max: 9999 }
+        { key: "tempo.larghissimo", max: 20 },
+        { key: "tempo.grave", max: 40 },
+        { key: "tempo.largo", max: 60 },
+        { key: "tempo.adagio", max: 76 },
+        { key: "tempo.andante", max: 108 },
+        { key: "tempo.moderato", max: 120 },
+        { key: "tempo.allegretto", max: 156 },
+        { key: "tempo.allegro", max: 176 },
+        { key: "tempo.vivace", max: 200 },
+        { key: "tempo.presto", max: 240 },
+        { key: "tempo.prestissimo", max: 9999 }
     ]
 
     readonly property int tempoBand: {
@@ -67,7 +77,7 @@ Item {
             if (bpm <= tempoBands[i].max) return i
         return tempoBands.length - 1
     }
-    readonly property string tempoName: tempoBands[tempoBand].name
+    readonly property string tempoName: I18n.tr(tempoBands[tempoBand].key)
 
     // The first state line arrives before this item does; until it has been
     // applied, no control pushes its own value back down the wire.
@@ -174,7 +184,8 @@ Item {
         }
 
         function onReadyReceived(device, rate, silent) {
-            root.errorMessage = silent ? "No audio output — running silently" : ""
+            root.silentOutput = silent
+            root.failure = ""
         }
 
         function onStarted() {
@@ -191,7 +202,7 @@ Item {
         }
 
         function onFailed(message) {
-            root.errorMessage = message
+            root.failure = message
         }
     }
 
@@ -472,6 +483,9 @@ Item {
             // medium and high tick.
             Row {
                 id: meters
+                // Beats run in time, left to right in any language.
+                LayoutMirroring.enabled: false
+                LayoutMirroring.childrenInherit: true
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Sixteen meters still have to fit the column: past twelve
                 // the gaps close up first, then the bars give up width.
@@ -493,6 +507,12 @@ Item {
                     Rectangle {
                         id: pick
                         readonly property int voice: root.voices[index]
+                        Accessible.role: Accessible.Button
+                        Accessible.name: I18n.tr("a11y.beat", {
+                            number: index + 1,
+                            voice: I18n.tr(["voice.silent", "voice.low", "voice.medium", "voice.high"][voice])
+                        })
+                        Accessible.onPressAction: root.cycleVoice(index)
                         readonly property bool isNow: root.running && root.currentBeat === index
                         width: meters.rectWidth
                         height: 3 * meters.barHeight + 2 * meters.barGap
@@ -551,6 +571,7 @@ Item {
                         width: Theme.golden(3)
                         height: Theme.golden(3)
                         label: "−"
+                        accessibleName: I18n.tr("a11y.slower")
                         pixelSize: Theme.golden(2)
                         framed: false
                         fillColor: Theme.color.lineSoft
@@ -594,6 +615,7 @@ Item {
 
                     TextInput {
                         id: hero
+                        Accessible.name: I18n.tr("a11y.tempo")
                         width: parent.width
                         // Both rects are baseline-relative: the ink's top
                         // below the line's top is the difference of the two.
@@ -650,6 +672,7 @@ Item {
                         width: Theme.golden(3)
                         height: Theme.golden(3)
                         label: "+"
+                        accessibleName: I18n.tr("a11y.faster")
                         pixelSize: Theme.golden(2)
                         framed: false
                         fillColor: Theme.color.lineSoft
@@ -668,6 +691,9 @@ Item {
                 // A solid accent circle, at rest and while the metronome runs ---
                 Rectangle {
                     id: play
+                    Accessible.role: Accessible.Button
+                    Accessible.name: I18n.tr(root.running ? "a11y.stop" : "a11y.play")
+                    Accessible.onPressAction: root.backend.toggle()
                     width: Theme.golden(5)
                     height: width
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -705,6 +731,7 @@ Item {
 
                     DialogButton {
                         id: tsButton
+                        accessibleName: I18n.tr("a11y.timeSignature", { beats: root.beats, unit: root.denominator })
                         width: Theme.golden(4)
                         height: Theme.golden(3)
                         label: root.beats + "/" + root.denominator
@@ -722,9 +749,10 @@ Item {
 
                     DialogButton {
                         id: tapButton
-                        width: Theme.golden(4)
+                        // A longer word widens the button rather than clipping.
+                        width: Math.max(Theme.golden(4), implicitWidth)
                         height: Theme.golden(3)
-                        label: "Tap"
+                        label: I18n.tr("main.tap")
                         pixelSize: Theme.font.body
                         framed: false
                         fillColor: Theme.color.lineSoft
@@ -735,6 +763,9 @@ Item {
                     // editor over all.
                     DialogButton {
                         id: subButton
+                        accessibleName: I18n.tr("a11y.subdivision", {
+                            name: Rhythm.cellName(root.denominator, Rhythm.cell(root.subdivision, root.subpattern, root.subshape), I18n)
+                        })
                         width: Theme.golden(4)
                         height: Theme.golden(3)
                         framed: false
@@ -840,7 +871,9 @@ Item {
                     leftPadding: Theme.spacing.rowPaddingX
                     rightPadding: Theme.spacing.rowPaddingX
                     bottomPadding: Theme.spacing.gap
-                    text: "TIME SIGNATURE"
+                    text: I18n.tr("timeSignature.title")
+                    font.capitalization: Font.AllUppercase
+                    elide: Text.ElideRight
                     color: Theme.color.muted
                     font.family: Theme.font.family
                     font.pixelSize: Theme.font.caption
@@ -864,6 +897,9 @@ Item {
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
                         spacing: Theme.space(6)
+                        // A time signature reads left to right everywhere.
+                        LayoutMirroring.enabled: false
+                        LayoutMirroring.childrenInherit: true
 
                         WheelColumn {
                             id: numWheel
@@ -904,13 +940,13 @@ Item {
 
                         DialogButton {
                             id: cancelBtn
-                            label: "Cancel"
+                            label: I18n.tr("dialog.cancel")
                             onActivated: root.tsOpen = false
                         }
 
                         DialogButton {
                             id: okBtn
-                            label: "OK"
+                            label: I18n.tr("dialog.ok")
                             primary: true
                             onActivated: {
                                 root.beats = tsPanel.draftBeats
@@ -944,7 +980,7 @@ Item {
             property int draftShape: root.subshape
             readonly property var draftCell: Rhythm.cell(draftDivision, draftMask, draftShape)
             readonly property var draftStarts: Rhythm.starts(draftDivision, draftCell.shape)
-            readonly property string draftName: Rhythm.cellName(root.denominator, draftCell)
+            readonly property string draftName: Rhythm.cellName(root.denominator, draftCell, I18n)
 
             function pick(cell) {
                 draftDivision = cell.n
@@ -1014,6 +1050,9 @@ Item {
             // One tile: the figure, lit when it is the draft.
             component CellTile: Item {
                 required property var modelData
+                Accessible.role: Accessible.Button
+                Accessible.name: Rhythm.cellName(root.denominator, Rhythm.cell(cell.n, cell.mask, cell.shape), I18n)
+                Accessible.onPressAction: subPanel.pick(cell)
                 readonly property var cell: modelData
                 // Lit only for the tile's own spelling: the same onsets spelled
                 // with rests are a different figure.
@@ -1066,7 +1105,9 @@ Item {
                     leftPadding: Theme.spacing.rowPaddingX
                     rightPadding: Theme.spacing.rowPaddingX
                     bottomPadding: Theme.spacing.gap
-                    text: "SUBDIVISION"
+                    text: I18n.tr("subdivision.title")
+                    font.capitalization: Font.AllUppercase
+                    elide: Text.ElideRight
                     color: Theme.color.muted
                     font.family: Theme.font.family
                     font.pixelSize: Theme.font.caption
@@ -1115,34 +1156,50 @@ Item {
                     spacing: Theme.golden(-1)
 
                     Row {
-                        x: Theme.spacing.rowPaddingX
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacing.rowPaddingX
                         spacing: Theme.golden(-1)
 
                         Text {
-                            width: Theme.golden(4)
+                            width: Math.max(Theme.golden(4), implicitWidth + Theme.golden(-1))
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "NOTES"
+                            text: I18n.tr("subdivision.notes")
+                            font.capitalization: Font.AllUppercase
                             color: Theme.color.muted
                             font.family: Theme.font.family
                             font.pixelSize: Theme.font.caption
                         }
 
-                        // One square per figure of the spelling: solid is a
-                        // note, empty a rest.
-                        Repeater {
-                            id: subSlots
-                            model: subPanel.draftStarts.length
+                        // The squares follow the notation, left to right.
+                        Row {
+                            anchors.verticalCenter: parent.verticalCenter
+                            LayoutMirroring.enabled: false
+                            LayoutMirroring.childrenInherit: true
+                            spacing: Theme.golden(-1)
 
-                            Rectangle {
-                                readonly property bool on: (subPanel.draftMask >> subPanel.draftStarts[index] & 1) === 1
-                                width: Theme.golden(2)
-                                height: Theme.golden(2)
-                                color: on ? Theme.color.accent : "transparent"
-                                border.width: Theme.spacing.hairline
-                                border.color: on ? Theme.color.accent : Theme.color.muted
+                            // One square per figure of the spelling: solid is a
+                            // note, empty a rest.
+                            Repeater {
+                                id: subSlots
+                                model: subPanel.draftStarts.length
 
-                                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: subPanel.toggleSlot(index) }
+                                Rectangle {
+                                    readonly property bool on: (subPanel.draftMask >> subPanel.draftStarts[index] & 1) === 1
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: I18n.tr("a11y.note", {
+                                        number: index + 1,
+                                        state: I18n.tr(on ? "a11y.noteSounds" : "a11y.noteRests")
+                                    })
+                                    Accessible.onPressAction: subPanel.toggleSlot(index)
+                                    width: Theme.golden(2)
+                                    height: Theme.golden(2)
+                                    color: on ? Theme.color.accent : "transparent"
+                                    border.width: Theme.spacing.hairline
+                                    border.color: on ? Theme.color.accent : Theme.color.muted
+
+                                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                    TapHandler { onTapped: subPanel.toggleSlot(index) }
+                                }
                             }
                         }
                     }
@@ -1151,7 +1208,8 @@ Item {
                 // The draft, drawn and named, so a figure is never the only
                 // word and a custom cell is seen before it is committed.
                 Row {
-                    x: Theme.spacing.rowPaddingX
+                    anchors.left: parent.left
+                    anchors.leftMargin: Theme.spacing.rowPaddingX
                     topPadding: Theme.spacing.gap
                     bottomPadding: Theme.space(12)
                     spacing: Theme.spacing.gap
@@ -1189,13 +1247,13 @@ Item {
 
                         DialogButton {
                             id: subCancelBtn
-                            label: "Cancel"
+                            label: I18n.tr("dialog.cancel")
                             onActivated: root.subOpen = false
                         }
 
                         DialogButton {
                             id: subOkBtn
-                            label: "OK"
+                            label: I18n.tr("dialog.ok")
                             primary: true
                             onActivated: subPanel.commit()
                         }
@@ -1226,19 +1284,33 @@ Item {
 
             MouseArea { anchors.fill: parent }
 
+            // Each row: the key cap and what it does, both catalogue keys.
             readonly property var bindings: [
-                ["space", "play, stop"],
-                ["↑ ↓", "tempo ±1"],
-                ["shift ↑ ↓", "tempo ±5"],
-                ["pgup pgdn", "tempo ±10"],
-                ["t", "tap tempo"],
-                ["1 2 4 8", "beat unit"],
-                ["esc", "stop"],
-                ["tab", "next control"],
-                ["enter", "press the focused control"],
-                ["ctrl q", "quit"],
-                ["?", "this sheet"]
+                ["keycap.space", "keys.playStop"],
+                ["keycap.upDown", "keys.tempo1"],
+                ["keycap.shiftUpDown", "keys.tempo5"],
+                ["keycap.pageUpDown", "keys.tempo10"],
+                ["keycap.t", "keys.tapTempo"],
+                ["keycap.beatUnits", "keys.beatUnit"],
+                ["keycap.esc", "keys.stop"],
+                ["keycap.tab", "keys.nextControl"],
+                ["keycap.enter", "keys.press"],
+                ["keycap.ctrlQ", "keys.quit"],
+                ["keycap.question", "keys.sheet"]
             ]
+
+            // The cap column fits the widest cap in this language.
+            FontMetrics {
+                id: capMetrics
+                font.family: Theme.font.family
+                font.pixelSize: Theme.font.bodySmall
+            }
+            readonly property int capWidth: {
+                var widest = Theme.space(96)
+                for (var i = 0; i < bindings.length; i++)
+                    widest = Math.max(widest, Math.ceil(capMetrics.advanceWidth(I18n.tr(bindings[i][0]))) + Theme.spacing.gap)
+                return widest
+            }
 
             Column {
                 id: keysColumn
@@ -1256,14 +1328,19 @@ Item {
                         anchors.left: parent.left
                         anchors.leftMargin: Theme.spacing.rowPaddingX
                         anchors.top: parent.top
-                        text: "KEYS"
+                        anchors.right: keysClose.left
+                        text: I18n.tr("keys.title")
+                        font.capitalization: Font.AllUppercase
+                        elide: Text.ElideRight
                         color: Theme.color.muted
                         font.family: Theme.font.family
                         font.pixelSize: Theme.font.caption
                     }
 
                     ChromeButton {
+                        id: keysClose
                         glyph: "✕"
+                        accessibleName: I18n.tr("a11y.close")
                         glyphSize: Theme.font.bodySmall
                         anchors.right: parent.right
                         anchors.rightMargin: Theme.spacing.gap
@@ -1292,28 +1369,33 @@ Item {
 
                         Item {
                             width: parent.width
-                            height: keyLabel.implicitHeight
+                            height: Math.max(keyLabel.implicitHeight, keyAction.implicitHeight)
 
                             Text {
                                 id: keyLabel
                                 anchors.left: parent.left
                                 anchors.leftMargin: Theme.spacing.rowPaddingX
-                                width: Theme.space(96)
-                                text: modelData[0]
+                                width: keysPanel.capWidth
+                                // Set, not implied, so mirroring swaps it to the
+                                // cap column's outer edge.
+                                horizontalAlignment: Text.AlignLeft
+                                text: I18n.shortcut(modelData[0])
                                 color: Theme.color.foreground
                                 font.family: Theme.font.family
                                 font.pixelSize: Theme.font.bodySmall
                             }
 
                             Text {
+                                id: keyAction
                                 anchors.left: keyLabel.right
                                 anchors.right: parent.right
                                 anchors.rightMargin: Theme.spacing.rowPaddingX
-                                text: modelData[1]
+                                horizontalAlignment: Text.AlignLeft
+                                text: I18n.tr(modelData[1])
                                 color: Theme.color.muted
                                 font.family: Theme.font.family
                                 font.pixelSize: Theme.font.bodySmall
-                                elide: Text.ElideRight
+                                wrapMode: Text.WordWrap
                             }
                         }
                     }

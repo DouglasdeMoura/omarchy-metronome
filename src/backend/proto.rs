@@ -29,6 +29,19 @@ pub fn parse(line: &str) -> Result<Command, String> {
     }
 }
 
+// Every code an error event can carry. The shell translates by code, so a
+// new failure gets a code here, a row in docs/protocol.md and a message in
+// ui/i18n/en.json; the i18n test holds the last two to this list.
+pub const ERROR_CODES: [&str; 7] = [
+    "no_output",
+    "device_failed",
+    "already_running",
+    "lock_failed",
+    "state_not_saved",
+    "request_refused",
+    "request_unreadable",
+];
+
 // The event half, one constructor per line, so the wire has exactly one author
 // per message and docs/protocol.md can be checked against this file alone.
 pub mod ev {
@@ -73,8 +86,18 @@ pub mod ev {
         .render()
     }
 
-    pub fn error(msg: &str) -> String {
-        Json::obj(vec![("t", Json::str("error")), ("msg", Json::str(msg))]).render()
+    // code names the failure for the shell to put in its own words; msg is
+    // the English line for logs and older shells; detail is the variable
+    // part, an OS error or a path, which a translation may quote.
+    pub fn error(code: &str, msg: &str, detail: &str) -> String {
+        debug_assert!(super::ERROR_CODES.contains(&code), "unknown error code {}", code);
+        Json::obj(vec![
+            ("t", Json::str("error")),
+            ("code", Json::str(code)),
+            ("msg", Json::str(msg)),
+            ("detail", Json::str(detail)),
+        ])
+        .render()
     }
 
     pub fn quitready() -> String {
@@ -139,7 +162,7 @@ mod tests {
             ev::started(),
             ev::beat(0, "high"),
             ev::stopped(12),
-            ev::error("boom"),
+            ev::error("request_refused", "boom", "boom"),
             ev::quitready(),
         ] {
             let parsed = Json::parse(&line).unwrap_or_else(|e| panic!("{}: {}", line, e));
@@ -148,6 +171,9 @@ mod tests {
         let beat = Json::parse(&ev::beat(3, "accent")).unwrap();
         assert_eq!(beat.get("beat").unwrap().as_u32(), Some(3));
         assert_eq!(beat.get("kind").unwrap().as_str(), Some("accent"));
+        let error = Json::parse(&ev::error("state_not_saved", "the state was not saved (x)", "x")).unwrap();
+        assert_eq!(error.get("code").unwrap().as_str(), Some("state_not_saved"));
+        assert_eq!(error.get("detail").unwrap().as_str(), Some("x"));
         let ready = Json::parse(&ev::ready("default", 44_100, true)).unwrap();
         assert_eq!(ready.get("rate").unwrap().as_u32(), Some(44_100));
         assert_eq!(ready.get("silent"), Some(&Json::Bool(true)));

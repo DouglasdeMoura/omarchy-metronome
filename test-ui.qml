@@ -63,16 +63,40 @@ ShellRoot {
             check(Rhythm.CELLS.length === want.length, "catalogue size " + Rhythm.CELLS.length)
             for (var c = 0; c < want.length; c++) {
                 var cell = Rhythm.CELLS[c]
-                var got = Rhythm.cellName(4, Rhythm.cell(cell.n, cell.mask, cell.shape))
+                var got = Rhythm.cellName(4, Rhythm.cell(cell.n, cell.mask, cell.shape), Pulse.I18n)
                 check(got === want[c], "cell " + c + ": " + got + " != " + want[c])
             }
             // A tick-edited spelling keeps its figures: the swing cell's first
             // figure at rest is a quarter rest, not two eighth rests.
-            check(Rhythm.cellName(4, Rhythm.cell(3, 4, 5)) === "Triplet quarter rest, eighth", "shape survives a rest")
-            check(Rhythm.cellName(4, Rhythm.cell(3, 4)) === "Triplet quarter rest, eighth", "the catalogue spells a bare pattern")
-            check(Rhythm.cellName(4, Rhythm.cell(6, 1, 33)) === "Sextuplet sixteenth rest, five sixteenths" || true, "")
+            check(Rhythm.cellName(4, Rhythm.cell(3, 4, 5), Pulse.I18n) === "Triplet quarter rest, eighth", "shape survives a rest")
+            check(Rhythm.cellName(4, Rhythm.cell(3, 4), Pulse.I18n) === "Triplet quarter rest, eighth", "the catalogue spells a bare pattern")
             check(Rhythm.cell(6, 1, 33).items.length === 6, "a span no figure spells falls back to a figure per slot")
-            console.log("PASS: frontend voices, loading, silent warning, save, meter limit, subdivision, catalogue")
+            // Localization: English is the source, a locale switch retranslates
+            // bound text in place, plural rules follow the language, and a
+            // right-to-left language mirrors the layout.
+            var I18n = Pulse.I18n
+            check(I18n.locale === "en" && I18n.tr("dialog.ok") === "OK", "the tests run in English")
+            check(main.tempoName === "Moderato", "the tempo marking comes from the catalogue")
+            check(I18n.tr("note.sixteenth", { count: 2 }) === "two sixteenths", "an exact plural form")
+            check(I18n.tr("note.sixteenth", { count: 9 }) === "9 sixteenths", "the other form fills its count")
+            check(I18n.tr("error.backendExited", { code: 3 }) === "The backend exited with code 3", "placeholders fill")
+            check(I18n.normalize("pt_BR.UTF-8@euro") === "pt_BR" && I18n.normalize("pt-br") === "pt_BR" && I18n.normalize("C") === "en", "locale names normalize")
+            I18n.setLocale("ru")
+            check(I18n.pluralCategory(1) === "one" && I18n.pluralCategory(3) === "few" && I18n.pluralCategory(5) === "many" && I18n.pluralCategory(21) === "one", "russian plurals")
+            check(I18n.tr("dialog.ok") === "OK", "a locale without a catalogue falls back to English")
+            I18n.setLocale("ar_EG")
+            check(I18n.pluralCategory(0) === "zero" && I18n.pluralCategory(2) === "two" && I18n.pluralCategory(11) === "many" && I18n.pluralCategory(100) === "other", "arabic plurals")
+            check(I18n.rtl && main.LayoutMirroring.enabled, "a right-to-left language mirrors the layout")
+            I18n.setLocale("pseudo")
+            check(!I18n.rtl && !main.LayoutMirroring.enabled, "pseudo stays left to right")
+            check(main.errorMessage.indexOf("⟦") === 0, "bound text retranslates: " + main.errorMessage)
+            check(main.tempoName.indexOf("⟦") === 0, "the tempo marking retranslates")
+            var pseudoName = Rhythm.cellName(4, Rhythm.cell(4, 15, 15), I18n)
+            check(pseudoName.indexOf("sixteenth") < 0 && pseudoName.indexOf("⟦") >= 0, "cell names are built from the catalogue: " + pseudoName)
+            check(I18n.tr("error.backendExited", { code: 3 }).indexOf("3") > 0, "pseudo keeps placeholders")
+            I18n.setLocale("en")
+            check(main.errorMessage === "No audio output — running silently", "back to English")
+            console.log("PASS: frontend voices, loading, silent warning, save, meter limit, subdivision, catalogue, i18n")
             Qt.quit()
         }
     }

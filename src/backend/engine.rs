@@ -251,7 +251,8 @@ pub enum Ev {
     Beat { beat: u32, kind: Kind },
     Started,
     Stopped { beats: u64 },
-    Error(String),
+    // The audio device failed; the detail is its own words.
+    DeviceFailed(String),
 }
 
 // The click voices. The high tone is brighter, longer and louder; the low
@@ -622,7 +623,11 @@ fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced
     let mut clock = None;
     if audio.is_none() {
         if !silent_forced {
-            let _ = proto::emit(&proto::ev::error("no usable audio output, running silent"));
+            let _ = proto::emit(&proto::ev::error(
+                "no_output",
+                "no usable audio output, running silent",
+                "",
+            ));
         }
         // A nominal 48 kHz names the silent clock's frame grid; nothing hears it.
         clock = Some(clock::spawn(shared.clone(), 48_000.0));
@@ -646,7 +651,11 @@ fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced
                     Ev::Beat { beat, kind } => proto::ev::beat(beat, kind.wire()),
                     Ev::Started => proto::ev::started(),
                     Ev::Stopped { beats } => proto::ev::stopped(beats),
-                    Ev::Error(msg) => proto::ev::error(&msg),
+                    Ev::DeviceFailed(detail) => proto::ev::error(
+                        "device_failed",
+                        &format!("the audio device failed ({})", detail),
+                        &detail,
+                    ),
                 };
                 let _ = proto::emit(&line);
             }
@@ -682,16 +691,17 @@ fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced
                 let mut params = shared.params_snapshot();
                 match params.apply_patch(body) {
                     Err(e) => {
-                        let _ = proto::emit(&proto::ev::error(&e));
+                        let _ = proto::emit(&proto::ev::error("request_refused", &e, &e));
                     }
                     Ok(()) => {
                         shared.params.store(&params);
                         if matches!(cmd, proto::Command::Save(_)) {
                             if let Err(e) = state::save(&params) {
-                                let _ = proto::emit(&proto::ev::error(&format!(
-                                    "the state was not saved ({})",
-                                    e
-                                )));
+                                let _ = proto::emit(&proto::ev::error(
+                                    "state_not_saved",
+                                    &format!("the state was not saved ({})", e),
+                                    &e,
+                                ));
                             }
                         }
                     }
@@ -789,7 +799,7 @@ mod audio {
             },
             move |err| {
                 if !err_shared.err_reported.swap(true, Ordering::AcqRel) {
-                    err_shared.send(Ev::Error(format!("the audio device failed ({})", err)));
+                    err_shared.send(Ev::DeviceFailed(err.to_string()));
                 }
             },
             None,

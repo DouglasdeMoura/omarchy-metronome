@@ -41,6 +41,8 @@ PULSE_SILENT=1 ./target/release/pulse --backend < lines-of-json
   theme dir would die with the old inode). hyprctl answers rounding and
   reduced motion. Theme *name* must be taken in `onLoaded`; a name read in
   the watch handler lags one theme behind.
+- `ui/I18n.qml` — the locale and its catalogues in `ui/i18n`; every word on
+  screen is `I18n.tr(key)`. See docs/i18n.md.
 - `ui/Backend.qml` — the process bridge: queue before spawn, SplitParser on
   stdout, one signal per protocol event.
 
@@ -53,3 +55,7 @@ PULSE_SILENT=1 ./target/release/pulse --backend < lines-of-json
   core of both the audio callback and the silent clock.
 - Everything user-visible is a theme token from Theme.qml; there are no
   literal colors outside the fallback palette.
+- Every user-visible string is a key in `ui/i18n/en.json`, shown through
+  `I18n.tr`; no literal words in QML. A new backend error gets a code in
+  proto.rs's `ERROR_CODES` and an `error.wire.<code>` message. cargo test
+  enforces both.

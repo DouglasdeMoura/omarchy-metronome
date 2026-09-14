@@ -3,6 +3,9 @@ mod gui;
 mod json;
 mod paths;
 
+#[cfg(test)]
+mod i18n_check;
+
 use std::process::exit;
 
 fn usage(message: &str) -> ! {

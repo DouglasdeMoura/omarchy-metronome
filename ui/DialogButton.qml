@@ -7,6 +7,9 @@ Item {
     id: root
 
     property string label: ""
+    // What a screen reader says; a button that carries a figure or a glyph
+    // instead of words names itself here.
+    property string accessibleName: label
     property bool primary: false
     // The main view draws the same button larger and heavier; a dialog's
     // action keeps the defaults.
@@ -30,6 +33,10 @@ Item {
     implicitWidth: Math.max(Theme.hitMin, text.implicitWidth + 2 * horizontalPadding + 2 * Theme.spacing.hairline)
     implicitHeight: Math.max(Theme.hitMin, text.implicitHeight + 2 * verticalPadding + 2 * Theme.spacing.hairline)
     scale: tap.pressed && !Theme.reducedMotion ? 0.96 : 1
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.accessibleName
+    Accessible.onPressAction: root.activated()
 
     Behavior on scale {
         enabled: !Theme.reducedMotion

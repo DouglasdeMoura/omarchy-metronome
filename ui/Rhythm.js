@@ -106,41 +106,36 @@ function figure(n, span) {
     return null
 }
 
-// Names follow the note the signature's bottom makes the beat.
-var VALUE_NAMES = {
-    1: ["whole", "half", "quarter", "eighth"],
-    2: ["half", "quarter", "eighth", "sixteenth"],
-    4: ["quarter", "eighth", "sixteenth", "thirty-second"],
-    8: ["eighth", "sixteenth", "thirty-second", "sixty-fourth"]
+// Names come from the catalogue, never from here: word order, plurals and
+// agreement belong to the language. A figure's key names what it is, its
+// value relative to a whole note, dotted or not, note or rest; the beat
+// note scales it, so a quarter-beat's k=2 is an eighth.
+var VALUE_KEYS = ["whole", "half", "quarter", "eighth", "sixteenth", "thirtySecond"]
+
+function figureKey(beatValue, it) {
+    var index = Math.round(Math.log(beatValue * it.k) / Math.LN2)
+    return (it.rest ? "rest." : "note.") + VALUE_KEYS[Math.min(index, VALUE_KEYS.length - 1)] + (it.dot ? ".dotted" : "")
 }
 
-function valueName(beatValue, k) {
-    var ladder = VALUE_NAMES[beatValue] || VALUE_NAMES[4]
-    return ladder[Math.round(Math.log(k) / Math.LN2)]
-}
-
-function cellName(beatValue, c) {
-    // Runs of one figure fold into a count: "sextuplet sixteenths", "two
-    // sixteenths, eighth", never a sixteenth six times over.
-    var words = ["", "", "two", "three", "four", "five", "six"]
+// The spoken name of a cell: runs of one figure fold into a count ("two
+// sixteenths"), a run that is the whole cell takes the "all" form
+// ("sixteenths"), and a tuplet's template frames the list. i18n is the
+// I18n singleton, passed in because a library script cannot import it.
+function cellName(beatValue, c, i18n) {
     var parts = []
     var i = 0
     while (i < c.items.length) {
         var it = c.items[i]
         var run = 1
         while (i + run < c.items.length && same(c.items[i + run], it)) run++
-        var name = valueName(beatValue, it.k)
-        if (it.dot) name = "dotted " + name
-        if (it.rest) name += " rest"
-        if (run === 1) parts.push(name)
-        else if (run === c.items.length) parts.push(name + "s")
-        else parts.push(words[run] + " " + name + "s")
+        var key = figureKey(beatValue, it)
+        if (run > 1 && run === c.items.length) parts.push(i18n.tr(key, { form: "all", count: run }))
+        else parts.push(i18n.tr(key, { count: run }))
         i += run
     }
-    var text = parts.join(", ")
-    var tuplets = { 3: "triplet ", 5: "quintuplet ", 6: "sextuplet " }
-    if (tuplets[c.n]) text = tuplets[c.n] + text
-    return text.charAt(0).toUpperCase() + text.slice(1)
+    var templates = { 3: "cell.triplet", 5: "cell.quintuplet", 6: "cell.sextuplet" }
+    var text = i18n.tr(templates[c.n] || "cell.plain", { figures: parts.join(i18n.tr("list.separator")) })
+    return text.charAt(0).toLocaleUpperCase() + text.slice(1)
 }
 
 function same(a, b) { return a.rest === b.rest && a.k === b.k && a.dot === b.dot }

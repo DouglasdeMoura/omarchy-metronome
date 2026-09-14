@@ -64,7 +64,7 @@ Every event names itself in `"t"`.
 | `started` | — | the timeline is armed and the first click is scheduled |
 | `beat` | `beat`, `kind` | one tick is on the device; `beat` counts from 0, `kind` is `high`, `medium`, `low`, `sub` (a tick between beats, `beat` names the beat it falls in) or `off` (muted: the visual walks, nothing sounds) |
 | `stopped` | `beats` | stopped; `beats` is the total number of beats played this run |
-| `error` | `msg` | a device failed, a patch was refused, a line was unreadable |
+| `error` | `code`, `msg`, `detail` | something failed; `code` is one of `no_output`, `device_failed`, `already_running`, `lock_failed`, `state_not_saved`, `request_refused`, `request_unreadable`, and the shell words the message by it; `msg` is the English line for logs; `detail` is the variable part (an OS error, a path) a translation may quote |
 | `quitready` | — | the backend has drained; the window may close |
 
 ```json

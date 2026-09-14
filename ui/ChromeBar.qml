@@ -28,6 +28,7 @@ Rectangle {
     ChromeButton {
         id: close
         glyph: "✕"
+        accessibleName: I18n.tr("a11y.close")
         glyphSize: Theme.font.bodySmall
         anchors.right: parent.right
         anchors.rightMargin: Theme.golden(0)

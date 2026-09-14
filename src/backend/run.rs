@@ -35,8 +35,8 @@ pub fn lock_path() -> std::path::PathBuf {
 }
 
 // Try to become the one Pulse. Ok(file) holds the lock for the process's
-// life; Err means another Pulse is already running.
-pub fn acquire_instance_lock() -> Result<std::fs::File, String> {
+// life; Err names the failure's wire code and says why.
+pub fn acquire_instance_lock() -> Result<std::fs::File, (&'static str, String)> {
     let path = lock_path();
     let file = std::fs::OpenOptions::new()
         .read(true)
@@ -45,14 +45,16 @@ pub fn acquire_instance_lock() -> Result<std::fs::File, String> {
         .truncate(false)
         .mode(0o600)
         .open(&path)
-        .map_err(|e| format!("{} could not be opened ({})", path.display(), e))?;
+        .map_err(|e| ("lock_failed", format!("{} could not be opened ({})", path.display(), e)))?;
     file.try_lock().map(|()| file).map_err(|err| match err {
-        std::fs::TryLockError::WouldBlock => {
-            format!("another Pulse is already running ({})", path.display())
-        }
-        std::fs::TryLockError::Error(err) => {
-            format!("{} could not be locked ({})", path.display(), err)
-        }
+        std::fs::TryLockError::WouldBlock => (
+            "already_running",
+            format!("another Pulse is already running ({})", path.display()),
+        ),
+        std::fs::TryLockError::Error(err) => (
+            "lock_failed",
+            format!("{} could not be locked ({})", path.display(), err),
+        ),
     })
 }
 
@@ -77,11 +79,11 @@ pub fn run() -> i32 {
     // single-instance claim back while the backend is still running.
     let _instance_lock = match acquire_instance_lock() {
         Ok(f) => f,
-        Err(msg) => {
+        Err((code, msg)) => {
             // The fresh shell gets the reason on the wire, where its error
-            // strip shows it, and on stderr for the logs.
+            // caption shows it, and on stderr for the logs.
             eprintln!("pulse: {}", msg);
-            let _ = proto::emit(&proto::ev::error(&msg));
+            let _ = proto::emit(&proto::ev::error(code, &msg, &msg));
             return 2;
         }
     };
@@ -104,7 +106,7 @@ pub fn run() -> i32 {
         let cmd = match proto::parse(&line) {
             Ok(cmd) => cmd,
             Err(e) => {
-                let _ = proto::emit(&proto::ev::error(&e));
+                let _ = proto::emit(&proto::ev::error("request_unreadable", &e, &e));
                 continue;
             }
         };

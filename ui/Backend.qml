@@ -36,7 +36,7 @@ Item {
             return
         }
         if (!child.running) {
-            root.failed("the backend is not running")
+            root.failed(I18n.tr("error.backendNotRunning"))
             return
         }
         child.write(line)
@@ -75,17 +75,18 @@ Item {
     // Sample input: {"t":"ready","device":"default","rate":44100,"silent":false}
     // Sample input: {"t":"beat","beat":0,"kind":"high"}
     // Sample input: {"t":"stopped","beats":12}
+    // Sample input: {"t":"error","code":"state_not_saved","msg":"the state was not saved (disk full)","detail":"disk full"}
     function receive(line) {
         if (!line || line.length === 0) return
         var message = null
         try {
             message = JSON.parse(line)
         } catch (e) {
-            root.failed("the backend sent a line this build cannot read")
+            root.failed(I18n.tr("error.backendUnreadable"))
             return
         }
         if (!message || typeof message !== "object") {
-            root.failed("the backend sent an invalid event")
+            root.failed(I18n.tr("error.backendInvalid"))
             return
         }
         if (message.t === "state") {
@@ -102,7 +103,13 @@ Item {
         } else if (message.t === "stopped") {
             root.stopped(message.beats || 0)
         } else if (message.t === "error") {
-            root.failed(message.msg || "unknown backend error")
+            // The code picks the words; msg is the backend's English, kept for
+            // a code this build does not know.
+            var key = "error.wire." + message.code
+            if (message.code && I18n.has(key))
+                root.failed(I18n.tr(key, { detail: message.detail || "" }))
+            else
+                root.failed(message.msg || I18n.tr("error.backendUnknown"))
         } else if (message.t === "quitready") {
             root.quitReady()
         }
@@ -134,7 +141,7 @@ Item {
             if (root.queueing && !child.running) {
                 root.queueing = false
                 root.pending = []
-                root.failed("the backend could not be started")
+                root.failed(I18n.tr("error.backendNotStarted"))
             }
         }
 
@@ -143,7 +150,7 @@ Item {
                 root.quitReady()
                 return
             }
-            root.failed("the backend exited with code " + exitCode)
+            root.failed(I18n.tr("error.backendExited", { code: exitCode }))
         }
     }
 }

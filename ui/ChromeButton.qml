@@ -5,6 +5,8 @@ Item {
     id: root
 
     property string glyph: ""
+    // A glyph is not a name: what a screen reader says instead.
+    property string accessibleName: ""
     property color restingColor: Theme.color.muted
     property real glyphSize: Theme.font.body + 2
 
@@ -13,6 +15,10 @@ Item {
     implicitWidth: Math.max(Theme.space(28), glyphSize + Theme.space(12))
     implicitHeight: Theme.space(28)
     scale: tap.pressed && root.enabled && !Theme.reducedMotion ? 0.94 : 1
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.accessibleName
+    Accessible.onPressAction: root.activated()
 
     Behavior on scale {
         enabled: !Theme.reducedMotion
