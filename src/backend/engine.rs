@@ -27,11 +27,14 @@ pub struct Params {
     // ones; a metronome tick has no length, so a cell is only its onsets.
     // Never zero: a beat with no tick at all is not a subdivision.
     pub subpattern: u32,
-    // How the shell spells the cell, which the engine never hears: false is
-    // the catalogue's figure, a dotted eighth and a sixteenth; true spells
-    // every clear slot as a rest, the way a cell edited tick by tick reads.
-    // Carried here so the button shows the same figure after a restart.
-    pub subrests: bool,
+    // How the shell spells the cell, which the engine never hears: bit i set
+    // means a figure starts at slot i. A figure that runs over clear slots
+    // is a longer note, a figure whose own slot is clear is a rest; so the
+    // dotted eighth and sixteenth and the sixteenth, two rests, sixteenth
+    // share a pattern and differ here. Every onset starts a figure and bit
+    // 0 is always set. Carried so the button keeps its figure after a
+    // restart.
+    pub subshape: u32,
     // Per-beat voice, one entry per beat position, BEATS_MAX long: 0 silent,
     // 1 low tone, 2 medium tone, 3 high tone. Positions past `beats` are
     // remembered, so a pattern survives a temporary change of meter.
@@ -53,7 +56,7 @@ impl Default for Params {
             volume: 0.8,
             subdivision: 1,
             subpattern: 1,
-            subrests: false,
+            subshape: 1,
             // The classic metronome: high on the one, low on the rest.
             voices: {
                 let mut v = [VOICE_LOW; BEATS_MAX as usize];
@@ -94,6 +97,8 @@ impl Params {
         if self.subpattern == 0 {
             self.subpattern = full;
         }
+        // A figure starts at every onset and at the beat; nothing past the grid.
+        self.subshape = (self.subshape & full) | self.subpattern | 1;
     }
 
     pub fn to_json(&self) -> Json {
@@ -108,7 +113,7 @@ impl Params {
             ("volume", Json::Num(volume)),
             ("subdivision", Json::int(self.subdivision as i64)),
             ("subpattern", Json::int(self.subpattern as i64)),
-            ("subrests", Json::Bool(self.subrests)),
+            ("subshape", Json::int(self.subshape as i64)),
             (
                 "voices",
                 Json::Arr(self.voices.iter().map(|v| Json::int(*v as i64)).collect()),
@@ -180,11 +185,14 @@ impl Params {
             }
             self.subpattern = m;
         }
-        if let Some(v) = body.get("subrests") {
-            self.subrests = match v {
-                Json::Bool(b) => *b,
-                _ => return Err("subrests must be true or false".to_string()),
-            };
+        if let Some(v) = body.get("subshape") {
+            let s = v
+                .as_u32()
+                .ok_or_else(|| "subshape must be a whole number".to_string())?;
+            if s == 0 || s >= 1 << SUBDIVISION_MAX {
+                return Err("subshape must be 1 to 63".to_string());
+            }
+            self.subshape = s;
         }
         if let Some(v) = body.get("voices") {
             let items = match v {
@@ -518,13 +526,13 @@ impl AtomicParams {
         self.bpm.store(params.bpm.to_bits(), Ordering::SeqCst);
         self.volume.store(params.volume.to_bits(), Ordering::SeqCst);
         // One word: beats in the low byte, denominator in the next, two
-        // bits per voice slot from 16, the subdivision at 48 and its six
-        // pattern bits at 52 — inside the u64 with six to spare.
+        // bits per voice slot from 16, the subdivision at 48, its six
+        // pattern bits at 52 and its six shape bits at 58: the u64 exactly.
         let mut pattern = params.beats as u64
             | ((params.denominator as u64) << 8)
             | ((params.subdivision as u64) << 48)
             | ((params.subpattern as u64) << 52)
-            | ((params.subrests as u64) << 58);
+            | ((params.subshape as u64) << 58);
         for (i, voice) in params.voices.iter().enumerate() {
             pattern |= (*voice as u64) << (16 + i * 2);
         }
@@ -550,7 +558,7 @@ impl AtomicParams {
             denominator: ((pattern >> 8) & 0xff) as u32,
             subdivision: ((pattern >> 48) & 0xf) as u32,
             subpattern: ((pattern >> 52) & 0x3f) as u32,
-            subrests: (pattern >> 58) & 1 == 1,
+            subshape: ((pattern >> 58) & 0x3f) as u32,
             voices: std::array::from_fn(|i| ((pattern >> (16 + i * 2)) & 3) as u8),
         })
     }
@@ -921,7 +929,7 @@ mod tests {
             volume: 0.1234,
             subdivision: 3,
             subpattern: 5,
-            subrests: true,
+            subshape: 7,
             voices: [2; BEATS_MAX as usize],
         };
         let shared = Arc::new(AtomicParams::new(&first));
@@ -1695,13 +1703,25 @@ mod tests {
         let state = Json::parse(&proto::ev::state(&q)).unwrap();
         assert_eq!(state.get("subpattern").unwrap().as_u32(), Some(3));
 
-        // The spelling rides along untouched by the engine: a bool, or refused.
-        assert!(q.apply_patch(&Json::parse(r#"{"subrests":1}"#).unwrap()).is_err());
-        q.apply_patch(&Json::parse(r#"{"subrests":true}"#).unwrap()).unwrap();
-        assert!(q.subrests);
+        // The spelling rides along untouched by the engine, kept coherent
+        // with the pattern: a figure at every onset, one at the beat, none
+        // past the grid.
+        assert!(q.apply_patch(&Json::parse(r#"{"subshape":0}"#).unwrap()).is_err());
+        assert!(q.apply_patch(&Json::parse(r#"{"subshape":64}"#).unwrap()).is_err());
+        q.apply_patch(&Json::parse(r#"{"subdivision":4,"subpattern":9,"subshape":9}"#).unwrap()).unwrap();
+        assert_eq!(q.subshape, 9, "a dotted eighth and a sixteenth");
+        q.apply_patch(&Json::parse(r#"{"subpattern":11}"#).unwrap()).unwrap();
+        assert_eq!(q.subshape, 11, "a new onset starts a figure");
+        q.apply_patch(&Json::parse(r#"{"subshape":2}"#).unwrap()).unwrap();
+        assert_eq!(q.subshape, 11, "the beat starts a figure whatever the shape says");
+        q.apply_patch(&Json::parse(r#"{"subdivision":2}"#).unwrap()).unwrap();
+        assert_eq!(q.subshape, 3, "bits past the grid are dropped: {}", q.subshape);
         let state = Json::parse(&proto::ev::state(&q)).unwrap();
-        assert_eq!(state.get("subrests"), Some(&Json::Bool(true)));
-        assert_eq!(AtomicParams::new(&q).load().unwrap(), q);
+        assert_eq!(state.get("subshape").unwrap().as_u32(), Some(3));
+        q.subdivision = 6;
+        q.subpattern = 0b101010;
+        q.subshape = 0b111111;
+        assert_eq!(AtomicParams::new(&q).load().unwrap(), q, "six shape bits survive the word");
     }
 
     #[test]

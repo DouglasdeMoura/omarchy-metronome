@@ -1,85 +1,109 @@
 .pragma library
 
-// The catalogue of cells one beat can be: every distinct set of onsets on a
-// grid of one to four slots, each with its canonical notation. A metronome
-// tick has no length, so two spellings with the same onsets are one sound,
-// and each mask appears once, spelled the way a player would write it.
+// The cell one beat is: a division into 1 to 6 slots, a pattern of the
+// slots that tick, and a shape of the slots that start a figure. A figure
+// runs from its slot to the next figure's; a figure whose own slot ticks is
+// a note, one whose slot is silent a rest. So a pattern is a sound and a
+// shape is its spelling: a dotted eighth and a sixteenth, or a sixteenth,
+// two rests and a sixteenth, tick the same and are drawn apart.
 //
-// An item is a note or a rest: k is the note's value relative to the beat
-// note (1 the beat itself, 2 half of it, 4 a quarter of it), dot lengthens
-// it by half. Under a tuplet the values are nominal: three of k=2, or five
-// or six of k=4, in the time of the beat.
+// The catalogue: every distinct pattern on a grid of one to four slots,
+// and the full quintuplet and sextuplet, each with the shape a player
+// would write. A shape equal to its pattern has no rest.
 
 var CELLS = [
-    { n: 1, mask: 0b1,    items: [note(1)] },
+    { n: 1, mask: 0b1,      shape: 0b1 },
 
-    { n: 2, mask: 0b11,   items: [note(2), note(2)] },
-    { n: 2, mask: 0b10,   items: [rest(2), note(2)] },
+    { n: 2, mask: 0b11,     shape: 0b11 },
+    { n: 2, mask: 0b10,     shape: 0b11 },
 
-    { n: 3, mask: 0b111,  items: [note(2), note(2), note(2)] },
-    { n: 3, mask: 0b101,  items: [note(1), note(2)] },
-    { n: 3, mask: 0b011,  items: [note(2), note(1)] },
-    { n: 3, mask: 0b110,  items: [rest(2), note(2), note(2)] },
-    { n: 3, mask: 0b100,  items: [rest(1), note(2)] },
-    { n: 3, mask: 0b010,  items: [rest(2), note(2), rest(2)] },
+    { n: 3, mask: 0b111,    shape: 0b111 },
+    { n: 3, mask: 0b101,    shape: 0b101 },
+    { n: 3, mask: 0b011,    shape: 0b011 },
+    { n: 3, mask: 0b110,    shape: 0b111 },
+    { n: 3, mask: 0b100,    shape: 0b101 },
+    { n: 3, mask: 0b010,    shape: 0b111 },
 
-    { n: 4, mask: 0b1111, items: [note(4), note(4), note(4), note(4)] },
-    { n: 4, mask: 0b1001, items: [note(2, true), note(4)] },
-    { n: 4, mask: 0b0011, items: [note(4), note(2, true)] },
-    { n: 4, mask: 0b1101, items: [note(2), note(4), note(4)] },
-    { n: 4, mask: 0b0111, items: [note(4), note(4), note(2)] },
-    { n: 4, mask: 0b1011, items: [note(4), note(2), note(4)] },
-    { n: 4, mask: 0b1110, items: [rest(4), note(4), note(4), note(4)] },
-    { n: 4, mask: 0b1010, items: [rest(4), note(4), rest(4), note(4)] },
-    { n: 4, mask: 0b1100, items: [rest(2), note(4), note(4)] },
-    { n: 4, mask: 0b0110, items: [rest(4), note(4), note(2)] },
-    { n: 4, mask: 0b0010, items: [rest(4), note(2, true)] },
-    { n: 4, mask: 0b1000, items: [rest(2, true), note(4)] },
+    { n: 4, mask: 0b1111,   shape: 0b1111 },
+    { n: 4, mask: 0b1001,   shape: 0b1001 },
+    { n: 4, mask: 0b0011,   shape: 0b0011 },
+    { n: 4, mask: 0b1101,   shape: 0b1101 },
+    { n: 4, mask: 0b0111,   shape: 0b0111 },
+    { n: 4, mask: 0b1011,   shape: 0b1011 },
+    { n: 4, mask: 0b1110,   shape: 0b1111 },
+    { n: 4, mask: 0b1010,   shape: 0b1111 },
+    { n: 4, mask: 0b1100,   shape: 0b1101 },
+    { n: 4, mask: 0b0110,   shape: 0b0111 },
+    { n: 4, mask: 0b0010,   shape: 0b0011 },
+    { n: 4, mask: 0b1000,   shape: 0b1001 },
 
-    { n: 5, mask: 0b11111,  items: [note(4), note(4), note(4), note(4), note(4)] },
-    { n: 5, mask: 0b11110,  items: [rest(4), note(4), note(4), note(4), note(4)] },
+    { n: 5, mask: 0b11111,  shape: 0b11111 },
+    { n: 5, mask: 0b11110,  shape: 0b11111 },
 
-    { n: 6, mask: 0b111111, items: [note(4), note(4), note(4), note(4), note(4), note(4)] },
-    { n: 6, mask: 0b111110, items: [rest(4), note(4), note(4), note(4), note(4), note(4)] }
+    { n: 6, mask: 0b111111, shape: 0b111111 },
+    { n: 6, mask: 0b111110, shape: 0b111111 }
 ]
-
-// The number over a tuplet's group, 0 when the grid is a plain division.
-function tuplet(n) { return n === 3 || n === 5 || n === 6 ? n : 0 }
-
-// The nominal value of a grid's notes: halves and quarters for 2 and 4,
-// the next power of two below the count for a tuplet.
-function nominal(n) { return n === 3 ? 2 : n >= 5 ? 4 : n }
-
-function note(k, dot) { return { rest: false, k: k, dot: dot === true } }
-function rest(k, dot) { return { rest: true, k: k, dot: dot === true } }
 
 function cellsFor(n) {
     return CELLS.filter(function (c) { return c.n === n })
 }
 
 // The tiles: a grid's cells without a rest. A rest is one tap away in the
-// editor's custom row, so the tiles stay the figures a player reaches for.
+// editor's ticks, so the tiles stay the figures a player reaches for.
 function tilesFor(n) {
-    return cellsFor(n).filter(function (c) {
-        return c.items.every(function (it) { return !it.rest })
-    })
+    return cellsFor(n).filter(function (c) { return c.shape === c.mask })
 }
 
-// The cell for a division and a pattern. Spelled literally when asked, or
-// when the catalogue has no figure for it: every slot a note or a rest of
-// the division's own value. Otherwise the catalogue's figure, which may
-// fold a clear slot into a longer note.
-function cell(n, mask, rests) {
-    if (rests !== true)
+// The number over a tuplet's group, 0 when the grid is a plain division.
+function tuplet(n) { return n === 3 || n === 5 || n === 6 ? n : 0 }
+
+// The nominal value of a grid's slot: halves and quarters for 2 and 4,
+// the next power of two below the count for a tuplet.
+function nominal(n) { return n === 3 ? 2 : n >= 5 ? 4 : n }
+
+// The slots that start a figure, in order.
+function starts(n, shape) {
+    var out = []
+    for (var s = 0; s < n; s++) if (shape >> s & 1) out.push(s)
+    return out
+}
+
+// The cell for a division, a pattern and a shape. With no shape given, the
+// catalogue's spelling of the pattern, or the literal one: a figure in
+// every slot. An item is a note or a rest with k, its value relative to
+// the beat note (1 the beat, 2 half of it, 4 a quarter), and a dot.
+function cell(n, mask, shape) {
+    if (shape === undefined) {
         for (var i = 0; i < CELLS.length; i++)
-            if (CELLS[i].n === n && CELLS[i].mask === mask) return CELLS[i]
-    return literal(n, mask)
+            if (CELLS[i].n === n && CELLS[i].mask === mask) { shape = CELLS[i].shape; break }
+        if (shape === undefined) shape = (1 << n) - 1
+    }
+    shape = (shape | mask | 1) & ((1 << n) - 1)
+    var at = starts(n, shape)
+    var items = []
+    for (var j = 0; j < at.length; j++) {
+        var span = (j + 1 < at.length ? at[j + 1] : n) - at[j]
+        var fig = figure(n, span)
+        // A span no single figure spells (five sixths of a beat) falls
+        // back to a figure per slot.
+        if (!fig) return cell(n, mask, (1 << n) - 1)
+        items.push({ rest: !(mask >> at[j] & 1), k: fig.k, dot: fig.dot })
+    }
+    return { n: n, mask: mask, shape: shape, items: items }
 }
 
-function literal(n, mask) {
-    var items = []
-    for (var s = 0; s < n; s++) items.push(mask >> s & 1 ? note(nominal(n)) : rest(nominal(n)))
-    return { n: n, mask: mask, items: items }
+// The figure for a run of `span` slots on a grid of n: the slot's own
+// value for one, twice that for two, dotted for three, four times for
+// four, dotted for six, and the beat itself for the whole grid.
+function figure(n, span) {
+    var u = nominal(n)
+    if (span === n) return { k: 1, dot: false }
+    if (span === 1) return { k: u, dot: false }
+    if (span === 2 && u >= 2) return { k: u / 2, dot: false }
+    if (span === 3 && u >= 2) return { k: u / 2, dot: true }
+    if (span === 4 && u >= 4) return { k: u / 4, dot: false }
+    if (span === 6 && u >= 4) return { k: u / 4, dot: true }
+    return null
 }
 
 // Names follow the note the signature's bottom makes the beat.

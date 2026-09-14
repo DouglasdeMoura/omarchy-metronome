@@ -30,19 +30,18 @@ Item {
     // on the wire with the last grid's mask.
     property int subdivision: 1
     property int subpattern: 1
-    // The cell's spelling: false is the catalogue's figure, true a rest in
-    // every clear slot, the way a cell edited tick by tick reads.
-    property bool subrests: false
+    // The cell's spelling: the slots that start a figure, see Rhythm.js.
+    property int subshape: 1
     property bool tsOpen: false
     property bool subOpen: false
     property bool keysOpen: false
 
-    function setCell(n, mask, rests) {
-        rests = rests === true
-        if (n === root.subdivision && mask === root.subpattern && rests === root.subrests) return
+    function setCell(n, mask, shape) {
+        shape = ((shape === undefined ? Rhythm.cell(n, mask).shape : shape) | mask | 1) & ((1 << n) - 1)
+        if (n === root.subdivision && mask === root.subpattern && shape === root.subshape) return
         root.subdivision = n
         root.subpattern = mask
-        root.subrests = rests
+        root.subshape = shape
         pushParams()
         pushSave()
     }
@@ -91,7 +90,7 @@ Item {
 
     function pushParams() {
         if (!root.backend || root.loading) return
-        root.backend.params({ bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, subpattern: root.subpattern, subrests: root.subrests, voices: root.voices })
+        root.backend.params({ bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, subpattern: root.subpattern, subshape: root.subshape, voices: root.voices })
     }
 
     function pushSave() {
@@ -103,7 +102,7 @@ Item {
         if (!saveTimer.running || root.loading) return
         saveTimer.stop()
         root.backend.save({
-            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, subpattern: root.subpattern, subrests: root.subrests, voices: root.voices
+            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, subpattern: root.subpattern, subshape: root.subshape, voices: root.voices
         })
     }
 
@@ -111,7 +110,7 @@ Item {
         id: saveTimer
         interval: 500
         onTriggered: root.backend.save({
-            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, subpattern: root.subpattern, subrests: root.subrests, voices: root.voices
+            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, subpattern: root.subpattern, subshape: root.subshape, voices: root.voices
         })
     }
 
@@ -161,14 +160,14 @@ Item {
     Connections {
         target: root.backend
 
-        function onStateReceived(bpm, beats, denominator, voices, volume, subdivision, subpattern, subrests) {
+        function onStateReceived(bpm, beats, denominator, voices, volume, subdivision, subpattern, subshape) {
             root.loading = true
             root.bpm = bpm
             root.beats = beats
             root.denominator = denominator
             root.subdivision = subdivision || 1
             root.subpattern = subpattern || 1
-            root.subrests = subrests === true
+            root.subshape = subshape || 1
             if (voices.length === 16) root.voices = voices
             hero.text = Math.round(bpm)
             root.loading = false
@@ -756,7 +755,7 @@ Item {
                             beatValue: root.denominator
                             division: root.subdivision
                             mask: root.subpattern
-                            rests: root.subrests
+                            shape: root.subshape
                             ink: subButton.ink
                         }
                         onActivated: {
@@ -950,35 +949,42 @@ Item {
 
             property int draftDivision: root.subdivision
             property int draftMask: root.subpattern
-            // A tile is spelled as drawn; a tick edited by hand spells the
-            // cell literally, a rest in every clear slot, from then on.
-            property bool draftRests: root.subrests
-            readonly property var draftCell: Rhythm.cell(draftDivision, draftMask, draftRests)
+            // The draft's spelling: a tile brings its own, the ticks keep it
+            // and only turn a figure into a rest or back.
+            property int draftShape: root.subshape
+            readonly property var draftCell: Rhythm.cell(draftDivision, draftMask, draftShape)
+            readonly property var draftStarts: Rhythm.starts(draftDivision, draftCell.shape)
+            readonly property string draftName: Rhythm.cellName(root.denominator, draftCell)
 
             function pick(cell) {
                 draftDivision = cell.n
                 draftMask = cell.mask
-                draftRests = false
+                // A cell named by pattern alone takes the catalogue's spelling.
+                draftShape = cell.shape !== undefined ? cell.shape : Rhythm.cell(cell.n, cell.mask).shape
             }
 
-            // The custom row edits the draft directly. A new grid keeps the
-            // slots that still fit and fills an emptied one; a slot never
-            // clears the last tick, since a cell with no tick is no cell.
+            // The custom row edits the draft directly. A new division keeps
+            // the ticks that still fit, fills an emptied pattern, and spells
+            // a figure per slot; a tick never clears the last one, since a
+            // cell with no tick is no cell.
             function setGrid(n) {
                 var mask = draftMask & ((1 << n) - 1)
                 draftDivision = n
                 draftMask = mask === 0 ? (1 << n) - 1 : mask
+                draftShape = (1 << n) - 1
             }
 
+            // The i-th figure becomes a rest, or a rest a note again.
             function toggleSlot(i) {
-                var next = draftMask ^ (1 << i)
+                var slot = draftStarts[i]
+                if (slot === undefined) return
+                var next = draftMask ^ (1 << slot)
                 if (next === 0) return
                 draftMask = next
-                draftRests = true
             }
 
             function commit() {
-                root.setCell(draftDivision, draftMask, draftRests)
+                root.setCell(draftDivision, draftMask, draftCell.shape)
                 root.subOpen = false
             }
 
@@ -1020,7 +1026,7 @@ Item {
                 }
                 draftDivision = root.subdivision
                 draftMask = root.subpattern
-                draftRests = root.subrests
+                draftShape = root.subshape
             }
 
             // One tile: the figure, lit when it is the draft.
@@ -1029,7 +1035,7 @@ Item {
                 readonly property var cell: modelData
                 // Lit only for the tile's own spelling: the same onsets spelled
                 // with rests are a different figure.
-                readonly property bool chosen: !subPanel.draftRests && subPanel.draftDivision === cell.n && subPanel.draftMask === cell.mask
+                readonly property bool chosen: subPanel.draftDivision === cell.n && subPanel.draftMask === cell.mask && subPanel.draftCell.shape === cell.shape
                 width: (subPanel.width - 2 * Theme.spacing.rowPaddingX - 3 * Theme.spacing.gap) / 4
                 height: Theme.golden(4) - Theme.golden(1)
 
@@ -1180,13 +1186,14 @@ Item {
                             font.pixelSize: Theme.font.caption
                         }
 
-                        // One square per slot: solid is a tick, empty a rest.
+                        // One square per figure of the spelling: solid is a
+                        // note, empty a rest.
                         Repeater {
                             id: subSlots
-                            model: subPanel.draftDivision
+                            model: subPanel.draftStarts.length
 
                             Rectangle {
-                                readonly property bool on: (subPanel.draftMask >> index & 1) === 1
+                                readonly property bool on: (subPanel.draftMask >> subPanel.draftStarts[index] & 1) === 1
                                 width: Theme.golden(2)
                                 height: Theme.golden(2)
                                 color: on ? Theme.color.accent : "transparent"
@@ -1213,14 +1220,14 @@ Item {
                         beatValue: root.denominator
                         division: subPanel.draftDivision
                         mask: subPanel.draftMask
-                        rests: subPanel.draftRests
+                        shape: subPanel.draftCell.shape
                         ink: Theme.color.accent
                     }
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         width: subPanel.width - 2 * Theme.spacing.rowPaddingX - Theme.golden(4) - Theme.spacing.gap
-                        text: Rhythm.cellName(root.denominator, subPanel.draftCell)
+                        text: subPanel.draftName
                         color: Theme.color.foreground
                         font.family: Theme.font.family
                         font.pixelSize: Theme.font.bodySmall

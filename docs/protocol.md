@@ -15,7 +15,7 @@ Every request names its command in `"c"`.
 | `start` | — | arm the timeline; the first click is one lead-in out |
 | `stop` | — | stop at once; a `stopped` event answers with the beat total |
 | `toggle` | — | start if stopped, stop if running |
-| `params` | any of `bpm`, `beats`, `denominator`, `subdivision`, `subpattern`, `subrests`, `volume`, `voices` | apply; tempo, signature and subdivision changes land at the next click, volume at the next click, numeric ranges clamped; invalid types, voices, denominators and subdivisions rejected |
+| `params` | any of `bpm`, `beats`, `denominator`, `subdivision`, `subpattern`, `subshape`, `volume`, `voices` | apply; tempo, signature and subdivision changes land at the next click, volume at the next click, numeric ranges clamped; invalid types, voices, denominators and subdivisions rejected |
 | `save` | same fields as `params` | apply and persist to `~/.config/pulse/state.json` |
 | `quit` | — | drain (stop, last events out), then one `quitready` |
 
@@ -32,10 +32,14 @@ a dotted note is a set bit followed by clear ones; a tick has no length, so
 a cell is only its onsets. 1 to 63 on the wire, never 0; bits past the grid
 are dropped and an emptied pattern fills its grid. The extra ticks are the
 `sub` voice, lighter than any beat; a muted beat keeps its whole cell muted.
-`subrests` is how the shell spells the cell and the engine never hears it:
-`false` draws the catalogue's figure for the onsets, a dotted eighth and a
-sixteenth; `true` draws every clear slot as a rest, the way a cell edited
-tick by tick reads. It is carried so the figure survives a restart.
+`subshape` is how the shell spells the cell and the engine never hears it:
+bit i set means a figure starts at slot i. A figure that runs over clear
+slots is a longer note, a figure whose own slot is clear is a rest, so a
+dotted eighth and a sixteenth (`subpattern` 9, `subshape` 9) and a
+sixteenth, two rests, sixteenth (`subpattern` 9, `subshape` 15) differ only
+here. Every onset starts a figure and bit 0 is always set; the backend
+enforces both and drops bits past the grid. Carried so the figure survives
+a restart.
 
 `voices` is the per-beat pattern: 0 silent, 1 low tone, 2 medium tone,
 3 high tone — sixteen slots so a pattern survives a change of meter. Short arrays retain the
@@ -55,7 +59,7 @@ Every event names itself in `"t"`.
 
 | event | fields | meaning |
 | --- | --- | --- |
-| `state` | `bpm`, `beats`, `denominator`, `subdivision`, `subpattern`, `subrests`, `voices`, `volume` | the loaded parameters, sent at startup and on `hello` |
+| `state` | `bpm`, `beats`, `denominator`, `subdivision`, `subpattern`, `subshape`, `voices`, `volume` | the loaded parameters, sent at startup and on `hello` |
 | `ready` | `device`, `rate`, `silent` | the output that will sound; `silent: true` means no device was found and a wall clock drives the visuals |
 | `started` | — | the timeline is armed and the first click is scheduled |
 | `beat` | `beat`, `kind` | one tick is on the device; `beat` counts from 0, `kind` is `high`, `medium`, `low`, `sub` (a tick between beats, `beat` names the beat it falls in) or `off` (muted: the visual walks, nothing sounds) |
