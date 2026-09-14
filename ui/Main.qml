@@ -648,16 +648,14 @@ Item {
                 spacing: Theme.golden(2)
 
                 // --- the transport: the one accent on the view, dead centre.
-                // An outlined circle at rest; solid while the metronome runs ---
+                // A solid accent circle, at rest and while the metronome runs ---
                 Rectangle {
                     id: play
                     width: Theme.golden(5)
                     height: width
                     anchors.horizontalCenter: parent.horizontalCenter
                     radius: width / 2
-                    color: root.running ? Theme.color.accent : "transparent"
-                    border.width: 2 * Theme.spacing.hairline
-                    border.color: Theme.color.accent
+                    color: Theme.color.accent
                     scale: playTap.pressed && !Theme.reducedMotion ? 0.96 : 1
 
                     Behavior on scale {
@@ -668,7 +666,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: root.running ? "■" : "▶"
-                        color: root.running ? Theme.color.background : Theme.color.accent
+                        color: Theme.color.background
                         font.family: Theme.font.family
                         // Two steps inside the circle: 89, 55, 34.
                         font.pixelSize: Theme.golden(3)
