@@ -274,16 +274,6 @@ Item {
                 })
             })(i)
         }
-        for (var g = 0; g < subGridChips.count; g++) {
-            (function (n) {
-                var chip = subGridChips.itemAt(n - 1)
-                if (chip) r.push({
-                    item: chip,
-                    activate: function () { subPanel.setGrid(n) },
-                    step: function (d) { subPanel.setGrid(Math.min(6, Math.max(1, subPanel.draftDivision + d))) }
-                })
-            })(g + 1)
-        }
         for (var s = 0; s < subSlots.count; s++) {
             (function (i) {
                 var slot = subSlots.itemAt(i)
@@ -963,18 +953,10 @@ Item {
                 draftShape = cell.shape !== undefined ? cell.shape : Rhythm.cell(cell.n, cell.mask).shape
             }
 
-            // The custom row edits the draft directly. A new division keeps
-            // the ticks that still fit, fills an emptied pattern, and spells
-            // a figure per slot; a tick never clears the last one, since a
-            // cell with no tick is no cell.
-            function setGrid(n) {
-                var mask = draftMask & ((1 << n) - 1)
-                draftDivision = n
-                draftMask = mask === 0 ? (1 << n) - 1 : mask
-                draftShape = (1 << n) - 1
-            }
-
-            // The i-th figure becomes a rest, or a rest a note again.
+            // The ticks edit the draft directly: the i-th figure becomes a
+            // rest, or a rest a note again. A tick never clears the last
+            // one, since a cell with no tick is no cell. From a full tile
+            // every pattern of its division is a few taps away.
             function toggleSlot(i) {
                 var slot = draftStarts[i]
                 if (slot === undefined) return
@@ -1111,9 +1093,10 @@ Item {
                     CellBand { id: subBandD; cells: Rhythm.tilesFor(5).concat(Rhythm.tilesFor(6)) }
                 }
 
-                // The custom row, under a rule: pick the division, then tap
-                // each of its slots on or off. Every cell the engine can play is
-                // reachable here; the tiles above are the common ones.
+                // The ticks, under a rule: one square per figure of the
+                // chosen cell, tapped on or off. Every cell the engine can
+                // play is a full tile and a few taps away; the tiles above
+                // are the common ones.
                 Item {
                     width: parent.width
                     height: Theme.spacing.gap
@@ -1130,48 +1113,6 @@ Item {
                     width: parent.width
                     topPadding: Theme.spacing.gap
                     spacing: Theme.golden(-1)
-
-                    Row {
-                        x: Theme.spacing.rowPaddingX
-                        spacing: Theme.golden(-1)
-
-                        Text {
-                            width: Theme.golden(4)
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "DIVISION"
-                            color: Theme.color.muted
-                            font.family: Theme.font.family
-                            font.pixelSize: Theme.font.caption
-                        }
-
-                        // One chip per grid, each a tiny figure of the plain
-                        // division: the beat, halves, a triplet, quarters,
-                        // a quintuplet, a sextuplet.
-                        Repeater {
-                            id: subGridChips
-                            model: 6
-
-                            DialogButton {
-                                id: gridChip
-                                readonly property int grid: index + 1
-                                width: chipFigure.implicitWidth + Theme.golden(-2) * 2
-                                height: Theme.golden(2) + Theme.golden(-1)
-                                framed: false
-                                fillColor: subPanel.draftDivision === grid ? Qt.alpha(Theme.color.accent, 0.12) : Theme.color.lineSoft
-                                primary: subPanel.draftDivision === grid
-                                onActivated: subPanel.setGrid(grid)
-
-                                NoteFigure {
-                                    id: chipFigure
-                                    unit: Theme.golden(0)
-                                    beatValue: root.denominator
-                                    division: gridChip.grid
-                                    mask: (1 << gridChip.grid) - 1
-                                    ink: gridChip.ink
-                                }
-                            }
-                        }
-                    }
 
                     Row {
                         x: Theme.spacing.rowPaddingX
