@@ -929,7 +929,8 @@ Item {
     }
 
         // --- the subdivision editor, over everything while open ---
-        // Every cell the beat can be, a tile each, in bands by grid;
+        // The plain cells a beat can be, a tile each, in bands by grid, and
+        // a custom row beneath that reaches every other one;
         // ok commits the draft, cancel or a click outside throws it away.
         MouseArea {
             anchors.fill: parent
@@ -977,7 +978,7 @@ Item {
             // The tiles in catalogue order, for the keyboard ring.
             function tiles() {
                 var out = []
-                var bands = [subBand1, subBand2, subBand3, subBand4, subBand5]
+                var bands = [subBandA, subBandB, subBandC, subBandD]
                 for (var b = 0; b < bands.length; b++)
                     for (var i = 0; i < bands[b].count; i++) {
                         var it = bands[b].itemAt(i)
@@ -1014,7 +1015,7 @@ Item {
                 readonly property var cell: modelData
                 readonly property bool chosen: subPanel.draftDivision === cell.n && subPanel.draftMask === cell.mask
                 width: (subPanel.width - 2 * Theme.spacing.rowPaddingX - 3 * Theme.spacing.gap) / 4
-                height: Theme.golden(4) - Theme.golden(2)
+                height: Theme.golden(4) - Theme.golden(1)
 
                 Rectangle {
                     anchors.fill: parent
@@ -1034,11 +1035,10 @@ Item {
                 TapHandler { onTapped: subPanel.pick(parent.cell) }
             }
 
-            // One band: the grid's tiles, four to a row.
+            // One band of tiles, four to a row.
             component CellBand: Flow {
                 property alias count: bandRepeater.count
-                property int grid: 1
-                property var cells: Rhythm.cellsFor(grid)
+                property var cells: []
                 function itemAt(i) { return bandRepeater.itemAt(i) }
                 width: parent.width - 2 * Theme.spacing.rowPaddingX
                 x: Theme.spacing.rowPaddingX
@@ -1076,17 +1076,17 @@ Item {
                     }
                 }
 
+                // The plain figures, by grid: the beat and its halves, the
+                // triplet cells, the sixteenth cells, the two wide tuplets.
                 Column {
                     width: parent.width
-                    topPadding: Theme.golden(-1)
-                    spacing: Theme.golden(-1)
+                    topPadding: Theme.spacing.gap
+                    spacing: Theme.spacing.gap
 
-                    CellBand { id: subBand1; grid: 1 }
-                    CellBand { id: subBand2; grid: 2 }
-                    CellBand { id: subBand3; grid: 3 }
-                    CellBand { id: subBand4; grid: 4 }
-                    // Quintuplets and sextuplets share a row: two cells each.
-                    CellBand { id: subBand5; grid: 5; cells: Rhythm.cellsFor(5).concat(Rhythm.cellsFor(6)) }
+                    CellBand { id: subBandA; cells: Rhythm.tilesFor(1).concat(Rhythm.tilesFor(2)) }
+                    CellBand { id: subBandB; cells: Rhythm.tilesFor(3) }
+                    CellBand { id: subBandC; cells: Rhythm.tilesFor(4) }
+                    CellBand { id: subBandD; cells: Rhythm.tilesFor(5).concat(Rhythm.tilesFor(6)) }
                 }
 
                 // The custom row, under a rule: pick the grid, then tap each

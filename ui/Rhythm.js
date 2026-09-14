@@ -57,6 +57,14 @@ function cellsFor(n) {
     return CELLS.filter(function (c) { return c.n === n })
 }
 
+// The tiles: a grid's cells without a rest. A rest is one tap away in the
+// editor's custom row, so the tiles stay the figures a player reaches for.
+function tilesFor(n) {
+    return cellsFor(n).filter(function (c) {
+        return c.items.every(function (it) { return !it.rest })
+    })
+}
+
 function cell(n, mask) {
     for (var i = 0; i < CELLS.length; i++)
         if (CELLS[i].n === n && CELLS[i].mask === mask) return CELLS[i]
