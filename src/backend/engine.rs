@@ -17,10 +17,15 @@ pub struct Params {
     // 4 is the classic metronome.
     pub denominator: u32,
     pub volume: f32,
-    // Ticks per beat: 1 is the beat alone, 2 splits it in halves, 3 in
+    // The beat's grid: 1 is the beat alone, 2 splits it in halves, 3 in
     // triplets, 4 in quarters. The extra ticks are a lighter voice, and a
     // muted beat keeps its subdivisions muted too.
     pub subdivision: u32,
+    // Which slots of the grid tick: bit i is slot i, bit 0 the beat itself.
+    // A rest is a clear bit, a dotted note is a set bit followed by clear
+    // ones; a metronome tick has no length, so a cell is only its onsets.
+    // Never zero: a beat with no tick at all is not a subdivision.
+    pub subpattern: u32,
     // Per-beat voice, one entry per beat position, BEATS_MAX long: 0 silent,
     // 1 low tone, 2 medium tone, 3 high tone. Positions past `beats` are
     // remembered, so a pattern survives a temporary change of meter.
@@ -41,6 +46,7 @@ impl Default for Params {
             denominator: 4,
             volume: 0.8,
             subdivision: 1,
+            subpattern: 1,
             // The classic metronome: high on the one, low on the rest.
             voices: {
                 let mut v = [VOICE_LOW; BEATS_MAX as usize];
@@ -74,6 +80,13 @@ impl Params {
         }
         self.volume = self.volume.clamp(0.0, 1.0);
         self.subdivision = self.subdivision.clamp(SUBDIVISION_MIN, SUBDIVISION_MAX);
+        // The pattern lives inside the grid; a pattern that names no slot
+        // at all becomes every slot.
+        let full = (1u32 << self.subdivision) - 1;
+        self.subpattern &= full;
+        if self.subpattern == 0 {
+            self.subpattern = full;
+        }
     }
 
     pub fn to_json(&self) -> Json {
@@ -87,6 +100,7 @@ impl Params {
             ("denominator", Json::int(self.denominator as i64)),
             ("volume", Json::Num(volume)),
             ("subdivision", Json::int(self.subdivision as i64)),
+            ("subpattern", Json::int(self.subpattern as i64)),
             (
                 "voices",
                 Json::Arr(self.voices.iter().map(|v| Json::int(*v as i64)).collect()),
@@ -148,6 +162,15 @@ impl Params {
                 return Err("subdivision must be 1, 2, 3 or 4".to_string());
             }
             self.subdivision = s;
+        }
+        if let Some(v) = body.get("subpattern") {
+            let m = v
+                .as_u32()
+                .ok_or_else(|| "subpattern must be a whole number".to_string())?;
+            if m == 0 || m >= 1 << SUBDIVISION_MAX {
+                return Err("subpattern must be 1 to 15".to_string());
+            }
+            self.subpattern = m;
         }
         if let Some(v) = body.get("voices") {
             let items = match v {
@@ -362,12 +385,14 @@ impl Timeline {
         self.beat %= params.beats;
         self.gain = params.volume;
         let beat_kind = kind_for(self.beat, params);
-        // A tick between beats takes the subdivision's voice, and none at
-        // all on a muted beat: a beat the player took out stays out.
-        let kind = if self.sub == 0 {
-            beat_kind
-        } else if beat_kind == Kind::Off {
+        // A slot the pattern leaves clear is a rest; a tick between beats
+        // takes the subdivision's voice; and a muted beat mutes its whole
+        // cell, so a beat the player took out stays out.
+        let slot_on = (params.subpattern >> self.sub) & 1 == 1;
+        let kind = if beat_kind == Kind::Off || !slot_on {
             Kind::Off
+        } else if self.sub == 0 {
+            beat_kind
         } else {
             Kind::Sub
         };
@@ -479,11 +504,12 @@ impl AtomicParams {
         self.bpm.store(params.bpm.to_bits(), Ordering::SeqCst);
         self.volume.store(params.volume.to_bits(), Ordering::SeqCst);
         // One word: beats in the low byte, denominator in the next, two
-        // bits per voice slot from 16, and the subdivision at 48 — well
-        // inside the u64.
+        // bits per voice slot from 16, the subdivision at 48 and its
+        // pattern at 52 — well inside the u64.
         let mut pattern = params.beats as u64
             | ((params.denominator as u64) << 8)
-            | ((params.subdivision as u64) << 48);
+            | ((params.subdivision as u64) << 48)
+            | ((params.subpattern as u64) << 52);
         for (i, voice) in params.voices.iter().enumerate() {
             pattern |= (*voice as u64) << (16 + i * 2);
         }
@@ -508,6 +534,7 @@ impl AtomicParams {
             beats: (pattern & 0xff) as u32,
             denominator: ((pattern >> 8) & 0xff) as u32,
             subdivision: ((pattern >> 48) & 0xf) as u32,
+            subpattern: ((pattern >> 52) & 0xf) as u32,
             voices: std::array::from_fn(|i| ((pattern >> (16 + i * 2)) & 3) as u8),
         })
     }
@@ -877,6 +904,7 @@ mod tests {
             denominator: 8,
             volume: 0.1234,
             subdivision: 3,
+            subpattern: 5,
             voices: [2; BEATS_MAX as usize],
         };
         let shared = Arc::new(AtomicParams::new(&first));
@@ -1538,6 +1566,7 @@ mod tests {
         // beat counter moving only on the beat, each tick half an interval.
         let mut p = params(120.0, 4, 4);
         p.subdivision = 2;
+        p.subpattern = 0b11;
         let mut tl = Timeline::new();
         tl.arm(0, 0.0, SR);
         let mut events = Vec::new();
@@ -1557,6 +1586,7 @@ mod tests {
         // Triplets on a muted beat stay muted; the next beat's are heard.
         let mut p = params(120.0, 2, 4);
         p.subdivision = 3;
+        p.subpattern = 0b111;
         p.voices[0] = 0;
         let mut tl = Timeline::new();
         tl.arm(0, 0.0, SR);
@@ -1597,8 +1627,55 @@ mod tests {
         assert_eq!(q.subdivision, SUBDIVISION_MAX);
         for s in SUBDIVISION_MIN..=SUBDIVISION_MAX {
             p.subdivision = s;
+            p.subpattern = (1 << s) - 1;
             let atomics = AtomicParams::new(&p);
             assert_eq!(atomics.load().unwrap(), p);
         }
+    }
+
+    #[test]
+    fn a_subpattern_rests_where_its_bits_are_clear() {
+        // A dotted eighth and a sixteenth: the beat, two rests, a sub.
+        let mut p = params(120.0, 1, 4);
+        p.subdivision = 4;
+        p.subpattern = 0b1001;
+        let mut tl = Timeline::new();
+        tl.arm(0, 0.0, SR);
+        let mut events = Vec::new();
+        tl.advance_events_to(SR as u64 / 2 - 1, &p, SR, &mut events);
+        let kinds: Vec<_> = events.iter().map(|e| match e {
+            Ev::Beat { kind, .. } => *kind,
+            _ => unreachable!(),
+        }).collect();
+        assert_eq!(kinds, vec![Kind::High, Kind::Off, Kind::Off, Kind::Sub]);
+        assert_eq!(tl.total_beats, 1);
+
+        // An offbeat eighth: the beat itself rests, and still counts.
+        p.subdivision = 2;
+        p.subpattern = 0b10;
+        let mut tl = Timeline::new();
+        tl.arm(0, 0.0, SR);
+        let mut events = Vec::new();
+        tl.advance_events_to(SR as u64 / 2 - 1, &p, SR, &mut events);
+        let kinds: Vec<_> = events.iter().map(|e| match e {
+            Ev::Beat { kind, .. } => *kind,
+            _ => unreachable!(),
+        }).collect();
+        assert_eq!(kinds, vec![Kind::Off, Kind::Sub]);
+        assert_eq!(tl.total_beats, 1);
+
+        // The wire refuses nothing-at-all and bits past the widest grid;
+        // the clamp trims a pattern to its grid and fills an empty one.
+        let mut q = Params::default();
+        assert!(q.apply_patch(&Json::parse(r#"{"subpattern":0}"#).unwrap()).is_err());
+        assert!(q.apply_patch(&Json::parse(r#"{"subpattern":16}"#).unwrap()).is_err());
+        q.apply_patch(&Json::parse(r#"{"subdivision":4,"subpattern":11}"#).unwrap()).unwrap();
+        assert_eq!(q.subpattern, 11);
+        q.apply_patch(&Json::parse(r#"{"subdivision":2}"#).unwrap()).unwrap();
+        assert_eq!(q.subpattern, 0b11, "bits past the grid are dropped");
+        q.apply_patch(&Json::parse(r#"{"subdivision":2,"subpattern":12}"#).unwrap()).unwrap();
+        assert_eq!(q.subpattern, 0b11, "a pattern with no slot in the grid fills it");
+        let state = Json::parse(&proto::ev::state(&q)).unwrap();
+        assert_eq!(state.get("subpattern").unwrap().as_u32(), Some(3));
     }
 }

@@ -7,7 +7,7 @@ ShellRoot {
         id: backend
         property var saved: null
         property var patched: null
-        signal stateReceived(real bpm, int beats, int denominator, var voices, real volume, int subdivision)
+        signal stateReceived(real bpm, int beats, int denominator, var voices, real volume, int subdivision, int subpattern)
         signal readyReceived(string device, int rate, bool silent)
         signal started()
         signal beat(int beat, string kind)
@@ -24,11 +24,11 @@ ShellRoot {
         onTriggered: {
             function check(value, reason) { if (!value) throw new Error(reason) }
             check(main.loading, "must wait for backend state")
-            backend.stateReceived(120, 16, 4, [3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], 0.8, 3)
+            backend.stateReceived(120, 16, 4, [3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], 0.8, 3, 5)
             check(!main.loading, "state must release loading gate")
-            check(main.subdivision === 3, "state must carry the subdivision")
-            main.subdivision = 2
-            check(backend.patched.subdivision === 2, "subdivision must reach backend")
+            check(main.subdivision === 3 && main.subpattern === 5, "state must carry the cell")
+            main.setCell(4, 9)
+            check(backend.patched.subdivision === 4 && backend.patched.subpattern === 9, "the cell must reach backend")
             for (var i = 0; i < 16; i++) {
                 for (var j = 0; j < 4; j++) {
                     var expected = (main.voices[i] + 1) % 4
@@ -52,7 +52,7 @@ ShellRoot {
             }
             var wheel = findNumerator(main)
             check(wheel && wheel.values.length === 16, "meter wheel must stop at sixteen")
-            check(backend.saved.subdivision === 2, "save must carry the subdivision")
+            check(backend.saved.subdivision === 4 && backend.saved.subpattern === 9, "save must carry the cell")
             console.log("PASS: frontend voices, loading, silent warning, save, meter limit, subdivision")
             Qt.quit()
         }

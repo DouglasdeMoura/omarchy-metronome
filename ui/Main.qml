@@ -1,4 +1,5 @@
 import QtQuick
+import "Rhythm.js" as Rhythm
 
 // Pulse's one screen. Everything musical lives here: the tempo marking, the
 // ring with the beat in its middle, the transport, the meter. The backend
@@ -24,19 +25,22 @@ Item {
     property string errorMessage: ""
 
     property var tapTimes: []
+    // The beat's cell: a grid of 1 to 4 slots and the mask of slots that
+    // tick, see Rhythm.js. The two change together, so a grid never lands
+    // on the wire with the last grid's mask.
     property int subdivision: 1
+    property int subpattern: 1
     property bool tsOpen: false
     property bool subOpen: false
     property bool keysOpen: false
 
-    // What a beat splits into, named for the note the signature's bottom
-    // makes the beat: one row per subdivision the dialog offers.
-    readonly property var subdivisionNames: ({
-        1: ["Whole", "Halves", "Triplets", "Quarters"],
-        2: ["Half", "Quarters", "Triplets", "Eighths"],
-        4: ["Quarter", "Eighths", "Triplets", "Sixteenths"],
-        8: ["Eighth", "Sixteenths", "Triplets", "Thirty-seconds"]
-    })
+    function setCell(n, mask) {
+        if (n === root.subdivision && mask === root.subpattern) return
+        root.subdivision = n
+        root.subpattern = mask
+        pushParams()
+        pushSave()
+    }
 
     // The classical markings, as bands: what the beat is relative to. The
     // bounds are the usual metronome tables, one band per name.
@@ -82,7 +86,7 @@ Item {
 
     function pushParams() {
         if (!root.backend || root.loading) return
-        root.backend.params({ bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, voices: root.voices })
+        root.backend.params({ bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, subpattern: root.subpattern, voices: root.voices })
     }
 
     function pushSave() {
@@ -94,7 +98,7 @@ Item {
         if (!saveTimer.running || root.loading) return
         saveTimer.stop()
         root.backend.save({
-            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, voices: root.voices
+            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, subpattern: root.subpattern, voices: root.voices
         })
     }
 
@@ -102,7 +106,7 @@ Item {
         id: saveTimer
         interval: 500
         onTriggered: root.backend.save({
-            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, voices: root.voices
+            bpm: root.bpm, beats: root.beats, denominator: root.denominator, subdivision: root.subdivision, subpattern: root.subpattern, voices: root.voices
         })
     }
 
@@ -119,7 +123,6 @@ Item {
         if (!root.tsOpen) tabbing = false
     }
     onDenominatorChanged: { pushParams(); pushSave() }
-    onSubdivisionChanged: { pushParams(); pushSave() }
     onSubOpenChanged: {
         root.focusIndex = -1
         root.rebuildRing()
@@ -153,12 +156,13 @@ Item {
     Connections {
         target: root.backend
 
-        function onStateReceived(bpm, beats, denominator, voices, volume, subdivision) {
+        function onStateReceived(bpm, beats, denominator, voices, volume, subdivision, subpattern) {
             root.loading = true
             root.bpm = bpm
             root.beats = beats
             root.denominator = denominator
             root.subdivision = subdivision || 1
+            root.subpattern = subpattern || 1
             if (voices.length === 16) root.voices = voices
             hero.text = Math.round(bpm)
             root.loading = false
@@ -246,25 +250,27 @@ Item {
         ring = r
     }
 
+    // The tiles in catalogue order, then Cancel and OK; up and down walk
+    // the catalogue, so a stepped draft is always a cell that exists.
     function rebuildSubRing() {
         var r = []
-        for (var i = 0; i < subRowsRepeater.count; i++) {
+        var tiles = subPanel.tiles()
+        for (var i = 0; i < tiles.length; i++) {
             (function (idx) {
-                var it = subRowsRepeater.itemAt(idx)
-                if (it) r.push({
+                var it = tiles[idx]
+                r.push({
                     item: it,
-                    activate: function () { subPanel.draftSubdivision = idx + 1 },
+                    activate: function () { subPanel.pick(it.cell) },
                     step: function (d) {
-                        subPanel.draftSubdivision = Math.min(4, Math.max(1, subPanel.draftSubdivision + d))
+                        var at = subPanel.draftIndex()
+                        var next = Math.min(Rhythm.CELLS.length - 1, Math.max(0, at + d))
+                        subPanel.pick(Rhythm.CELLS[next])
                     }
                 })
             })(i)
         }
         r.push({ item: subCancelBtn, activate: function () { root.subOpen = false } })
-        r.push({ item: subOkBtn, activate: function () {
-            root.subdivision = subPanel.draftSubdivision
-            root.subOpen = false
-        } })
+        r.push({ item: subOkBtn, activate: function () { subPanel.commit() } })
         ring = r
     }
 
@@ -727,6 +733,7 @@ Item {
                         NoteFigure {
                             beatValue: root.denominator
                             division: root.subdivision
+                            mask: root.subpattern
                             ink: subButton.ink
                         }
                         onActivated: {
@@ -906,8 +913,8 @@ Item {
     }
 
         // --- the subdivision editor, over everything while open ---
-        // One row per way the beat can split; ok commits the draft, cancel
-        // or a click outside throws it away.
+        // Every cell the beat can be, a tile each, in four bands by grid;
+        // ok commits the draft, cancel or a click outside throws it away.
         MouseArea {
             anchors.fill: parent
             visible: root.subOpen
@@ -917,7 +924,37 @@ Item {
         Rectangle {
             id: subPanel
 
-            property int draftSubdivision: root.subdivision
+            property int draftDivision: root.subdivision
+            property int draftMask: root.subpattern
+            readonly property var draftCell: Rhythm.cell(draftDivision, draftMask)
+
+            function pick(cell) {
+                draftDivision = cell.n
+                draftMask = cell.mask
+            }
+
+            function commit() {
+                root.setCell(draftDivision, draftMask)
+                root.subOpen = false
+            }
+
+            function draftIndex() {
+                for (var i = 0; i < Rhythm.CELLS.length; i++)
+                    if (Rhythm.CELLS[i].n === draftDivision && Rhythm.CELLS[i].mask === draftMask) return i
+                return 0
+            }
+
+            // The tiles in catalogue order, for the keyboard ring.
+            function tiles() {
+                var out = []
+                var bands = [subBand1, subBand2, subBand3, subBand4]
+                for (var b = 0; b < bands.length; b++)
+                    for (var i = 0; i < bands[b].count; i++) {
+                        var it = bands[b].itemAt(i)
+                        if (it) out.push(it)
+                    }
+                return out
+            }
 
             anchors.centerIn: parent
             visible: root.subOpen
@@ -937,7 +974,49 @@ Item {
                     root.rebuildRing()
                     return
                 }
-                draftSubdivision = root.subdivision
+                draftDivision = root.subdivision
+                draftMask = root.subpattern
+            }
+
+            // One tile: the figure, lit when it is the draft.
+            component CellTile: Item {
+                required property var modelData
+                readonly property var cell: modelData
+                readonly property bool chosen: subPanel.draftDivision === cell.n && subPanel.draftMask === cell.mask
+                width: (subPanel.width - 2 * Theme.spacing.rowPaddingX - 3 * Theme.spacing.gap) / 4
+                height: Theme.golden(4) - Theme.golden(0)
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: parent.chosen ? Qt.alpha(Theme.color.accent, 0.12)
+                         : tileHover.hovered ? Theme.color.lineSoft : "transparent"
+                }
+
+                NoteFigure {
+                    anchors.centerIn: parent
+                    beatValue: root.denominator
+                    division: parent.cell.n
+                    mask: parent.cell.mask
+                    ink: parent.chosen ? Theme.color.accent : Theme.color.foreground
+                }
+
+                HoverHandler { id: tileHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: subPanel.pick(parent.cell) }
+            }
+
+            // One band: the grid's tiles, four to a row.
+            component CellBand: Flow {
+                property alias count: bandRepeater.count
+                property int grid: 1
+                function itemAt(i) { return bandRepeater.itemAt(i) }
+                width: parent.width - 2 * Theme.spacing.rowPaddingX
+                x: Theme.spacing.rowPaddingX
+                spacing: Theme.spacing.gap
+                Repeater {
+                    id: bandRepeater
+                    model: Rhythm.cellsFor(grid)
+                    delegate: CellTile {}
+                }
             }
 
             Column {
@@ -968,63 +1047,27 @@ Item {
 
                 Column {
                     width: parent.width
-                    topPadding: Theme.space(6)
+                    topPadding: Theme.spacing.gap
+                    spacing: Theme.spacing.gap
+
+                    CellBand { id: subBand1; grid: 1 }
+                    CellBand { id: subBand2; grid: 2 }
+                    CellBand { id: subBand3; grid: 3 }
+                    CellBand { id: subBand4; grid: 4 }
+                }
+
+                // The draft's name, so a figure is never the only word.
+                Text {
+                    width: parent.width
+                    leftPadding: Theme.spacing.rowPaddingX
+                    rightPadding: Theme.spacing.rowPaddingX
+                    topPadding: Theme.spacing.gap
                     bottomPadding: Theme.space(12)
-
-                    Repeater {
-                        id: subRowsRepeater
-                        model: 4
-
-                        Item {
-                            readonly property int count: index + 1
-                            readonly property bool chosen: subPanel.draftSubdivision === count
-                            width: parent.width
-                            height: Theme.golden(4) - Theme.golden(0)
-
-                            Rectangle {
-                                anchors.fill: parent
-                                anchors.leftMargin: Theme.spacing.gap
-                                anchors.rightMargin: Theme.spacing.gap
-                                color: parent.chosen ? Qt.alpha(Theme.color.accent, 0.12)
-                                     : subHover.hovered ? Theme.color.lineSoft : "transparent"
-                            }
-
-                            // The figure itself, then its name.
-                            NoteFigure {
-                                id: subFigure
-                                anchors.left: parent.left
-                                anchors.leftMargin: Theme.spacing.rowPaddingX
-                                anchors.verticalCenter: parent.verticalCenter
-                                beatValue: root.denominator
-                                division: parent.count
-                                ink: parent.chosen ? Theme.color.accent : Theme.color.foreground
-                            }
-
-                            // The figures take one column, so the names line up.
-                            Text {
-                                anchors.left: parent.left
-                                anchors.leftMargin: Theme.spacing.rowPaddingX + Theme.golden(4) + Theme.spacing.gap
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: root.subdivisionNames[root.denominator][index]
-                                color: parent.chosen ? Theme.color.accent : Theme.color.foreground
-                                font.family: Theme.font.family
-                                font.pixelSize: Theme.font.body
-                            }
-
-                            Text {
-                                anchors.right: parent.right
-                                anchors.rightMargin: Theme.spacing.rowPaddingX
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: parent.count === 1 ? "the beat" : parent.count + " per beat"
-                                color: Theme.color.muted
-                                font.family: Theme.font.family
-                                font.pixelSize: Theme.font.caption
-                            }
-
-                            HoverHandler { id: subHover; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: subPanel.draftSubdivision = parent.count }
-                        }
-                    }
+                    text: Rhythm.cellName(root.denominator, subPanel.draftCell)
+                    color: Theme.color.foreground
+                    font.family: Theme.font.family
+                    font.pixelSize: Theme.font.bodySmall
+                    elide: Text.ElideRight
                 }
 
                 Item {
@@ -1046,10 +1089,7 @@ Item {
                             id: subOkBtn
                             label: "OK"
                             primary: true
-                            onActivated: {
-                                root.subdivision = subPanel.draftSubdivision
-                                root.subOpen = false
-                            }
+                            onActivated: subPanel.commit()
                         }
                     }
                 }

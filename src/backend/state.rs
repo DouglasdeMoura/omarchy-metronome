@@ -80,6 +80,7 @@ mod tests {
             voices: [2, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 3, 0, 0, 1],
             volume: 0.55,
             subdivision: 4,
+            subpattern: 0b1011,
         };
         save_to(&p, &path).unwrap();
 
