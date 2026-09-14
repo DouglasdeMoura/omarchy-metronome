@@ -25,7 +25,7 @@ Item {
     property string errorMessage: ""
 
     property var tapTimes: []
-    // The beat's cell: a grid of 1 to 4 slots and the mask of slots that
+    // The beat's cell: a grid of 1 to 6 slots and the mask of slots that
     // tick, see Rhythm.js. The two change together, so a grid never lands
     // on the wire with the last grid's mask.
     property int subdivision: 1
@@ -913,7 +913,7 @@ Item {
     }
 
         // --- the subdivision editor, over everything while open ---
-        // Every cell the beat can be, a tile each, in four bands by grid;
+        // Every cell the beat can be, a tile each, in bands by grid;
         // ok commits the draft, cancel or a click outside throws it away.
         MouseArea {
             anchors.fill: parent
@@ -947,7 +947,7 @@ Item {
             // The tiles in catalogue order, for the keyboard ring.
             function tiles() {
                 var out = []
-                var bands = [subBand1, subBand2, subBand3, subBand4]
+                var bands = [subBand1, subBand2, subBand3, subBand4, subBand5]
                 for (var b = 0; b < bands.length; b++)
                     for (var i = 0; i < bands[b].count; i++) {
                         var it = bands[b].itemAt(i)
@@ -984,7 +984,7 @@ Item {
                 readonly property var cell: modelData
                 readonly property bool chosen: subPanel.draftDivision === cell.n && subPanel.draftMask === cell.mask
                 width: (subPanel.width - 2 * Theme.spacing.rowPaddingX - 3 * Theme.spacing.gap) / 4
-                height: Theme.golden(4) - Theme.golden(0)
+                height: Theme.golden(4) - Theme.golden(1)
 
                 Rectangle {
                     anchors.fill: parent
@@ -1008,13 +1008,14 @@ Item {
             component CellBand: Flow {
                 property alias count: bandRepeater.count
                 property int grid: 1
+                property var cells: Rhythm.cellsFor(grid)
                 function itemAt(i) { return bandRepeater.itemAt(i) }
                 width: parent.width - 2 * Theme.spacing.rowPaddingX
                 x: Theme.spacing.rowPaddingX
                 spacing: Theme.spacing.gap
                 Repeater {
                     id: bandRepeater
-                    model: Rhythm.cellsFor(grid)
+                    model: cells
                     delegate: CellTile {}
                 }
             }
@@ -1054,6 +1055,8 @@ Item {
                     CellBand { id: subBand2; grid: 2 }
                     CellBand { id: subBand3; grid: 3 }
                     CellBand { id: subBand4; grid: 4 }
+                    // Quintuplets and sextuplets share a row: two cells each.
+                    CellBand { id: subBand5; grid: 5; cells: Rhythm.cellsFor(5).concat(Rhythm.cellsFor(6)) }
                 }
 
                 // The draft's name, so a figure is never the only word.

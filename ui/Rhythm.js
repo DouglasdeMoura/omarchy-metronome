@@ -7,8 +7,8 @@
 //
 // An item is a note or a rest: k is the note's value relative to the beat
 // note (1 the beat itself, 2 half of it, 4 a quarter of it), dot lengthens
-// it by half. Under a triplet the values are nominal: three of k=2 in the
-// time of the beat.
+// it by half. Under a tuplet the values are nominal: three of k=2, or five
+// or six of k=4, in the time of the beat.
 
 var CELLS = [
     { n: 1, mask: 0b1,    items: [note(1)] },
@@ -34,8 +34,21 @@ var CELLS = [
     { n: 4, mask: 0b1100, items: [rest(2), note(4), note(4)] },
     { n: 4, mask: 0b0110, items: [rest(4), note(4), note(2)] },
     { n: 4, mask: 0b0010, items: [rest(4), note(2, true)] },
-    { n: 4, mask: 0b1000, items: [rest(2, true), note(4)] }
+    { n: 4, mask: 0b1000, items: [rest(2, true), note(4)] },
+
+    { n: 5, mask: 0b11111,  items: [note(4), note(4), note(4), note(4), note(4)] },
+    { n: 5, mask: 0b11110,  items: [rest(4), note(4), note(4), note(4), note(4)] },
+
+    { n: 6, mask: 0b111111, items: [note(4), note(4), note(4), note(4), note(4), note(4)] },
+    { n: 6, mask: 0b111110, items: [rest(4), note(4), note(4), note(4), note(4), note(4)] }
 ]
+
+// The number over a tuplet's group, 0 when the grid is a plain division.
+function tuplet(n) { return n === 3 || n === 5 || n === 6 ? n : 0 }
+
+// The nominal value of a grid's notes: halves and quarters for 2 and 4,
+// the next power of two below the count for a tuplet.
+function nominal(n) { return n === 3 ? 2 : n >= 5 ? 4 : n }
 
 function note(k, dot) { return { rest: false, k: k, dot: dot === true } }
 function rest(k, dot) { return { rest: true, k: k, dot: dot === true } }
@@ -50,7 +63,7 @@ function cell(n, mask) {
     // A pattern the catalogue does not spell (a hand-written state file):
     // the grid alone, every slot a note.
     var items = []
-    for (var s = 0; s < n; s++) items.push(mask >> s & 1 ? note(n === 3 ? 2 : n) : rest(n === 3 ? 2 : n))
+    for (var s = 0; s < n; s++) items.push(mask >> s & 1 ? note(nominal(n)) : rest(nominal(n)))
     return { n: n, mask: mask, items: items }
 }
 
@@ -68,14 +81,27 @@ function valueName(beatValue, k) {
 }
 
 function cellName(beatValue, c) {
+    // Runs of one figure fold into a count: "sextuplet sixteenths", "two
+    // sixteenths, eighth", never a sixteenth six times over.
+    var words = ["", "", "two", "three", "four", "five", "six"]
     var parts = []
-    for (var i = 0; i < c.items.length; i++) {
+    var i = 0
+    while (i < c.items.length) {
         var it = c.items[i]
+        var run = 1
+        while (i + run < c.items.length && same(c.items[i + run], it)) run++
         var name = valueName(beatValue, it.k)
         if (it.dot) name = "dotted " + name
-        parts.push(it.rest ? name + " rest" : name)
+        if (it.rest) name += " rest"
+        if (run === 1) parts.push(name)
+        else if (run === c.items.length) parts.push(name + "s")
+        else parts.push(words[run] + " " + name + "s")
+        i += run
     }
     var text = parts.join(", ")
-    if (c.n === 3) text = "triplet " + text
+    var tuplets = { 3: "triplet ", 5: "quintuplet ", 6: "sextuplet " }
+    if (tuplets[c.n]) text = tuplets[c.n] + text
     return text.charAt(0).toUpperCase() + text.slice(1)
 }
+
+function same(a, b) { return a.rest === b.rest && a.k === b.k && a.dot === b.dot }

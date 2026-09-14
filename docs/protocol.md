@@ -24,11 +24,12 @@ Every request names its command in `"c"`.
 {"c":"save","bpm":132,"beats":4,"denominator":4,"voices":[2,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1]}
 ```
 
-`subdivision` is the beat's grid, 1 to 4 slots: 1 is the beat alone, 2
-halves it, 3 makes triplets, 4 quarters it. `subpattern` says which slots
+`subdivision` is the beat's grid, 1 to 6 slots: 1 is the beat alone, 2
+halves it, 3 makes triplets, 4 quarters it, 5 and 6 make quintuplets and
+sextuplets. `subpattern` says which slots
 tick: bit i is slot i, bit 0 the beat itself, so a rest is a clear bit and
 a dotted note is a set bit followed by clear ones; a tick has no length, so
-a cell is only its onsets. 1 to 15 on the wire, never 0; bits past the grid
+a cell is only its onsets. 1 to 63 on the wire, never 0; bits past the grid
 are dropped and an emptied pattern fills its grid. The extra ticks are the
 `sub` voice, lighter than any beat; a muted beat keeps its whole cell muted.
 

@@ -16,15 +16,16 @@ Canvas {
     property color ink: Theme.color.foreground
 
     readonly property var cell: Rhythm.cell(division, mask)
-    readonly property bool triplet: division === 3
+    readonly property int tuplet: Rhythm.tuplet(division)
 
     readonly property real unit: Theme.font.body
     readonly property real headRx: unit * 0.32
     readonly property real headRy: unit * 0.23
     readonly property real stemH: unit * 1.15
-    readonly property real step: unit * 0.95
+    // Five or six notes close ranks, so a sextuplet still fits its button.
+    readonly property real step: unit * (cell.items.length > 4 ? 0.68 : 0.95)
     readonly property real beamGap: unit * 0.28
-    readonly property real tripletRoom: triplet ? unit * 0.7 : 0
+    readonly property real tripletRoom: tuplet ? unit * 0.7 : 0
 
     implicitWidth: Math.ceil(headRx * 2 + (cell.items.length - 1) * step + unit * 0.5 + dots() * unit * 0.2)
     implicitHeight: Math.ceil(headRy * 2 + stemH + tripletRoom + unit * 0.2)
@@ -130,9 +131,9 @@ Canvas {
             }
         }
 
-        // The triplet's 3 over the cell, with a bracket when the cell is
-        // not one beamed group: a rest or an unbeamed note in it.
-        if (root.triplet) {
+        // The tuplet's number over the cell, with a bracket when the cell
+        // is not one beamed group: a rest or an unbeamed note in it.
+        if (root.tuplet) {
             var left = xs[0] - headRx * 0.2
             var right = xs[items.length - 1] + headRx
             var mid = (left + right) / 2
@@ -140,7 +141,7 @@ Canvas {
             ctx.font = "bold " + Math.round(unit * 0.6) + "px " + Theme.font.family
             ctx.textAlign = "center"
             ctx.textBaseline = "alphabetic"
-            ctx.fillText("3", mid, ty)
+            ctx.fillText(String(root.tuplet), mid, ty)
             var beamed = notes.length === items.length && notes.length > 1 && maxBeams > 0
             for (var q = 0; q < notes.length && beamed; q++) if (beamsOf(items[notes[q]]) === 0) beamed = false
             if (!beamed) {
