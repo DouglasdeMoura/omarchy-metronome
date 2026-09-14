@@ -269,6 +269,22 @@ Item {
                 })
             })(i)
         }
+        for (var g = 0; g < subGridChips.count; g++) {
+            (function (n) {
+                var chip = subGridChips.itemAt(n - 1)
+                if (chip) r.push({
+                    item: chip,
+                    activate: function () { subPanel.setGrid(n) },
+                    step: function (d) { subPanel.setGrid(Math.min(6, Math.max(1, subPanel.draftDivision + d))) }
+                })
+            })(g + 1)
+        }
+        for (var s = 0; s < subSlots.count; s++) {
+            (function (i) {
+                var slot = subSlots.itemAt(i)
+                if (slot) r.push({ item: slot, activate: function () { subPanel.toggleSlot(i) } })
+            })(s)
+        }
         r.push({ item: subCancelBtn, activate: function () { root.subOpen = false } })
         r.push({ item: subOkBtn, activate: function () { subPanel.commit() } })
         ring = r
@@ -933,6 +949,20 @@ Item {
                 draftMask = cell.mask
             }
 
+            // The custom row edits the draft directly. A new grid keeps the
+            // slots that still fit and fills an emptied one; a slot never
+            // clears the last tick, since a cell with no tick is no cell.
+            function setGrid(n) {
+                var mask = draftMask & ((1 << n) - 1)
+                draftDivision = n
+                draftMask = mask === 0 ? (1 << n) - 1 : mask
+            }
+
+            function toggleSlot(i) {
+                var next = draftMask ^ (1 << i)
+                if (next !== 0) draftMask = next
+            }
+
             function commit() {
                 root.setCell(draftDivision, draftMask)
                 root.subOpen = false
@@ -984,7 +1014,7 @@ Item {
                 readonly property var cell: modelData
                 readonly property bool chosen: subPanel.draftDivision === cell.n && subPanel.draftMask === cell.mask
                 width: (subPanel.width - 2 * Theme.spacing.rowPaddingX - 3 * Theme.spacing.gap) / 4
-                height: Theme.golden(4) - Theme.golden(1)
+                height: Theme.golden(4) - Theme.golden(2)
 
                 Rectangle {
                     anchors.fill: parent
@@ -1048,8 +1078,8 @@ Item {
 
                 Column {
                     width: parent.width
-                    topPadding: Theme.spacing.gap
-                    spacing: Theme.spacing.gap
+                    topPadding: Theme.golden(-1)
+                    spacing: Theme.golden(-1)
 
                     CellBand { id: subBand1; grid: 1 }
                     CellBand { id: subBand2; grid: 2 }
@@ -1059,18 +1089,117 @@ Item {
                     CellBand { id: subBand5; grid: 5; cells: Rhythm.cellsFor(5).concat(Rhythm.cellsFor(6)) }
                 }
 
-                // The draft's name, so a figure is never the only word.
-                Text {
+                // The custom row, under a rule: pick the grid, then tap each
+                // of its slots on or off. Every cell the engine can play is
+                // reachable here; the tiles above are the common ones.
+                Item {
                     width: parent.width
-                    leftPadding: Theme.spacing.rowPaddingX
-                    rightPadding: Theme.spacing.rowPaddingX
+                    height: Theme.spacing.gap
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: Theme.spacing.hairline
+                        color: Theme.color.muted
+                        opacity: 0.4
+                    }
+                }
+
+                Column {
+                    width: parent.width
+                    topPadding: Theme.spacing.gap
+                    spacing: Theme.golden(-1)
+
+                    Row {
+                        x: Theme.spacing.rowPaddingX
+                        spacing: Theme.golden(-1)
+
+                        Text {
+                            width: Theme.golden(4)
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "GRID"
+                            color: Theme.color.muted
+                            font.family: Theme.font.family
+                            font.pixelSize: Theme.font.caption
+                        }
+
+                        Repeater {
+                            id: subGridChips
+                            model: 6
+
+                            DialogButton {
+                                readonly property int grid: index + 1
+                                width: Theme.golden(2)
+                                height: Theme.golden(2)
+                                label: String(grid)
+                                pixelSize: Theme.font.caption
+                                framed: false
+                                fillColor: subPanel.draftDivision === grid ? Qt.alpha(Theme.color.accent, 0.12) : Theme.color.lineSoft
+                                primary: subPanel.draftDivision === grid
+                                onActivated: subPanel.setGrid(grid)
+                            }
+                        }
+                    }
+
+                    Row {
+                        x: Theme.spacing.rowPaddingX
+                        spacing: Theme.golden(-1)
+
+                        Text {
+                            width: Theme.golden(4)
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "TICKS"
+                            color: Theme.color.muted
+                            font.family: Theme.font.family
+                            font.pixelSize: Theme.font.caption
+                        }
+
+                        // One square per slot: solid is a tick, empty a rest.
+                        Repeater {
+                            id: subSlots
+                            model: subPanel.draftDivision
+
+                            Rectangle {
+                                readonly property bool on: (subPanel.draftMask >> index & 1) === 1
+                                width: Theme.golden(2)
+                                height: Theme.golden(2)
+                                color: on ? Theme.color.accent : "transparent"
+                                border.width: Theme.spacing.hairline
+                                border.color: on ? Theme.color.accent : Theme.color.muted
+
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: subPanel.toggleSlot(index) }
+                            }
+                        }
+                    }
+                }
+
+                // The draft, drawn and named, so a figure is never the only
+                // word and a custom cell is seen before it is committed.
+                Row {
+                    x: Theme.spacing.rowPaddingX
                     topPadding: Theme.spacing.gap
                     bottomPadding: Theme.space(12)
-                    text: Rhythm.cellName(root.denominator, subPanel.draftCell)
-                    color: Theme.color.foreground
-                    font.family: Theme.font.family
-                    font.pixelSize: Theme.font.bodySmall
-                    elide: Text.ElideRight
+                    spacing: Theme.spacing.gap
+
+                    NoteFigure {
+                        anchors.verticalCenter: parent.verticalCenter
+                        beatValue: root.denominator
+                        division: subPanel.draftDivision
+                        mask: subPanel.draftMask
+                        ink: Theme.color.accent
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: subPanel.width - 2 * Theme.spacing.rowPaddingX - Theme.golden(4) - Theme.spacing.gap
+                        text: Rhythm.cellName(root.denominator, subPanel.draftCell)
+                        color: Theme.color.foreground
+                        font.family: Theme.font.family
+                        font.pixelSize: Theme.font.bodySmall
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                    }
                 }
 
                 Item {
