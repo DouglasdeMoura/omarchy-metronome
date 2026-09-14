@@ -1089,8 +1089,8 @@ Item {
                     CellBand { id: subBandD; cells: Rhythm.tilesFor(5).concat(Rhythm.tilesFor(6)) }
                 }
 
-                // The custom row, under a rule: pick the grid, then tap each
-                // of its slots on or off. Every cell the engine can play is
+                // The custom row, under a rule: pick the division, then tap
+                // each of its slots on or off. Every cell the engine can play is
                 // reachable here; the tiles above are the common ones.
                 Item {
                     width: parent.width
@@ -1114,9 +1114,9 @@ Item {
                         spacing: Theme.golden(-1)
 
                         Text {
-                            width: Theme.golden(3)
+                            width: Theme.golden(4)
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "GRID"
+                            text: "DIVISION"
                             color: Theme.color.muted
                             font.family: Theme.font.family
                             font.pixelSize: Theme.font.caption
@@ -1132,7 +1132,7 @@ Item {
                             DialogButton {
                                 id: gridChip
                                 readonly property int grid: index + 1
-                                width: chipFigure.implicitWidth + Theme.golden(-1) * 2
+                                width: chipFigure.implicitWidth + Theme.golden(-2) * 2
                                 height: Theme.golden(2) + Theme.golden(-1)
                                 framed: false
                                 fillColor: subPanel.draftDivision === grid ? Qt.alpha(Theme.color.accent, 0.12) : Theme.color.lineSoft
@@ -1156,7 +1156,7 @@ Item {
                         spacing: Theme.golden(-1)
 
                         Text {
-                            width: Theme.golden(3)
+                            width: Theme.golden(4)
                             anchors.verticalCenter: parent.verticalCenter
                             text: "TICKS"
                             color: Theme.color.muted

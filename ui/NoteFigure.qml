@@ -139,7 +139,8 @@ Canvas {
             var right = xs[items.length - 1] + headRx
             var mid = (left + right) / 2
             var ty = stemTop - unit * 0.25
-            ctx.font = "bold " + Math.round(unit * 0.6) + "px " + Theme.font.family
+            // The number never shrinks past legibility, whatever the scale.
+            ctx.font = "bold " + Math.round(Math.max(unit * 0.6, Theme.font.caption * 0.75)) + "px " + Theme.font.family
             ctx.textAlign = "center"
             ctx.textBaseline = "alphabetic"
             ctx.fillText(String(root.tuplet), mid, ty)
