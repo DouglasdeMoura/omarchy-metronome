@@ -81,6 +81,7 @@ mod tests {
             volume: 0.55,
             subdivision: 4,
             subpattern: 0b1011,
+            subrests: true,
         };
         save_to(&p, &path).unwrap();
 

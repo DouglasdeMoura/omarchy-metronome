@@ -27,6 +27,11 @@ pub struct Params {
     // ones; a metronome tick has no length, so a cell is only its onsets.
     // Never zero: a beat with no tick at all is not a subdivision.
     pub subpattern: u32,
+    // How the shell spells the cell, which the engine never hears: false is
+    // the catalogue's figure, a dotted eighth and a sixteenth; true spells
+    // every clear slot as a rest, the way a cell edited tick by tick reads.
+    // Carried here so the button shows the same figure after a restart.
+    pub subrests: bool,
     // Per-beat voice, one entry per beat position, BEATS_MAX long: 0 silent,
     // 1 low tone, 2 medium tone, 3 high tone. Positions past `beats` are
     // remembered, so a pattern survives a temporary change of meter.
@@ -48,6 +53,7 @@ impl Default for Params {
             volume: 0.8,
             subdivision: 1,
             subpattern: 1,
+            subrests: false,
             // The classic metronome: high on the one, low on the rest.
             voices: {
                 let mut v = [VOICE_LOW; BEATS_MAX as usize];
@@ -102,6 +108,7 @@ impl Params {
             ("volume", Json::Num(volume)),
             ("subdivision", Json::int(self.subdivision as i64)),
             ("subpattern", Json::int(self.subpattern as i64)),
+            ("subrests", Json::Bool(self.subrests)),
             (
                 "voices",
                 Json::Arr(self.voices.iter().map(|v| Json::int(*v as i64)).collect()),
@@ -172,6 +179,12 @@ impl Params {
                 return Err("subpattern must be 1 to 63".to_string());
             }
             self.subpattern = m;
+        }
+        if let Some(v) = body.get("subrests") {
+            self.subrests = match v {
+                Json::Bool(b) => *b,
+                _ => return Err("subrests must be true or false".to_string()),
+            };
         }
         if let Some(v) = body.get("voices") {
             let items = match v {
@@ -510,7 +523,8 @@ impl AtomicParams {
         let mut pattern = params.beats as u64
             | ((params.denominator as u64) << 8)
             | ((params.subdivision as u64) << 48)
-            | ((params.subpattern as u64) << 52);
+            | ((params.subpattern as u64) << 52)
+            | ((params.subrests as u64) << 58);
         for (i, voice) in params.voices.iter().enumerate() {
             pattern |= (*voice as u64) << (16 + i * 2);
         }
@@ -536,6 +550,7 @@ impl AtomicParams {
             denominator: ((pattern >> 8) & 0xff) as u32,
             subdivision: ((pattern >> 48) & 0xf) as u32,
             subpattern: ((pattern >> 52) & 0x3f) as u32,
+            subrests: (pattern >> 58) & 1 == 1,
             voices: std::array::from_fn(|i| ((pattern >> (16 + i * 2)) & 3) as u8),
         })
     }
@@ -906,6 +921,7 @@ mod tests {
             volume: 0.1234,
             subdivision: 3,
             subpattern: 5,
+            subrests: true,
             voices: [2; BEATS_MAX as usize],
         };
         let shared = Arc::new(AtomicParams::new(&first));
@@ -1678,6 +1694,14 @@ mod tests {
         assert_eq!(q.subpattern, 0b11, "a pattern with no slot in the grid fills it");
         let state = Json::parse(&proto::ev::state(&q)).unwrap();
         assert_eq!(state.get("subpattern").unwrap().as_u32(), Some(3));
+
+        // The spelling rides along untouched by the engine: a bool, or refused.
+        assert!(q.apply_patch(&Json::parse(r#"{"subrests":1}"#).unwrap()).is_err());
+        q.apply_patch(&Json::parse(r#"{"subrests":true}"#).unwrap()).unwrap();
+        assert!(q.subrests);
+        let state = Json::parse(&proto::ev::state(&q)).unwrap();
+        assert_eq!(state.get("subrests"), Some(&Json::Bool(true)));
+        assert_eq!(AtomicParams::new(&q).load().unwrap(), q);
     }
 
     #[test]

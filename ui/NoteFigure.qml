@@ -13,9 +13,11 @@ Canvas {
     // The cell: its grid and its pattern, see Rhythm.js.
     property int division: 1
     property int mask: 1
+    // Spell every clear slot as a rest rather than the catalogue's figure.
+    property bool rests: false
     property color ink: Theme.color.foreground
 
-    readonly property var cell: Rhythm.cell(division, mask)
+    readonly property var cell: Rhythm.cell(division, mask, rests)
     readonly property int tuplet: Rhythm.tuplet(division)
 
     // The figure's scale: the body size by default, smaller for a chip.
@@ -49,6 +51,7 @@ Canvas {
     onBeatValueChanged: requestPaint()
     onDivisionChanged: requestPaint()
     onMaskChanged: requestPaint()
+    onRestsChanged: requestPaint()
     onInkChanged: requestPaint()
 
     onPaint: {

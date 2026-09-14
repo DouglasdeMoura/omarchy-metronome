@@ -65,11 +65,18 @@ function tilesFor(n) {
     })
 }
 
-function cell(n, mask) {
-    for (var i = 0; i < CELLS.length; i++)
-        if (CELLS[i].n === n && CELLS[i].mask === mask) return CELLS[i]
-    // A pattern the catalogue does not spell (a hand-written state file):
-    // the grid alone, every slot a note.
+// The cell for a division and a pattern. Spelled literally when asked, or
+// when the catalogue has no figure for it: every slot a note or a rest of
+// the division's own value. Otherwise the catalogue's figure, which may
+// fold a clear slot into a longer note.
+function cell(n, mask, rests) {
+    if (rests !== true)
+        for (var i = 0; i < CELLS.length; i++)
+            if (CELLS[i].n === n && CELLS[i].mask === mask) return CELLS[i]
+    return literal(n, mask)
+}
+
+function literal(n, mask) {
     var items = []
     for (var s = 0; s < n; s++) items.push(mask >> s & 1 ? note(nominal(n)) : rest(nominal(n)))
     return { n: n, mask: mask, items: items }
