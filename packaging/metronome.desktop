@@ -5,6 +5,6 @@ Comment=A metronome that follows your Omarchy theme
 Exec=metronome
 Icon=metronome
 Terminal=false
-Categories=AudioVideo;Audio;Utility;
+Categories=AudioVideo;Audio;
 Keywords=metronome;tempo;music;practice;omarchy;
 StartupWMClass=dev.douglasmoura.metronome
