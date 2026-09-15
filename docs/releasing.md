@@ -46,17 +46,19 @@ makepkg --printsrcinfo > .SRCINFO
 makepkg -si                         # build, test and install it locally
 ```
 
-Then publish the directory's `PKGBUILD` and `.SRCINFO` to the AUR, which
-needs an AUR account with your SSH key:
+Then publish to the AUR with `packaging/aur/publish.sh`. It needs an SSH key
+registered with your AUR account; `~/.ssh/config` should point
+`aur.archlinux.org` at it, with `User aur`. Check the key first:
 
 ```sh
-git clone ssh://aur@aur.archlinux.org/winkel.git /tmp/aur-winkel
-cp PKGBUILD .SRCINFO /tmp/aur-winkel/
-cd /tmp/aur-winkel
-git add PKGBUILD .SRCINFO
-git commit -m "Update to X.Y.Z"
-git push
+ssh aur@aur.archlinux.org help        # lists commands when the key is accepted
+packaging/aur/publish.sh --dry-run    # clone, copy and commit, push nothing
+packaging/aur/publish.sh winkel winkel-bin
 ```
+
+The script regenerates each `.SRCINFO`, clones the package's AUR repository
+into `~/.cache/winkel-aur`, commits the `PKGBUILD` and `.SRCINFO`, and pushes
+`master`. The AUR creates a package the first time its repository is pushed.
 
 `winkel-git` builds whatever is on `main`, so it is published once
 and only updated when its PKGBUILD changes.
