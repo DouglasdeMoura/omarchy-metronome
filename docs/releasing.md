@@ -62,3 +62,35 @@ git push
 and only updated when its PKGBUILD changes.
 
 Commit the updated checksums and `.SRCINFO` files back to this repository.
+
+## 5. The Omarchy package repository
+
+Omarchy users can already install from the AUR with
+`omarchy pkg aur add omarchy-metronome`. Shipping in Omarchy's own
+repository, so `omarchy pkg add omarchy-metronome` works with no AUR helper,
+is up to Omarchy's maintainers.
+
+`packaging/omarchy/omarchy-metronome/` holds the two files a submission to
+[omacom/omarchy-pkgs](https://github.com/omacom/omarchy-pkgs) needs:
+
+- `PKGBUILD`, the source build, with Omarchy's dependency list style.
+- `.omarchy/package.json`, which watches this repository's `v*` tags, so
+  Omarchy's pipeline picks up each release after a 24-hour quarantine.
+
+To submit, once a release exists:
+
+```sh
+gh repo fork omacom/omarchy-pkgs --clone
+cd omarchy-pkgs
+git switch -c add-omarchy-metronome
+cp -r ../omarchy-metronome/packaging/omarchy/omarchy-metronome pkgbuilds/
+(cd pkgbuilds/omarchy-metronome && updpkgsums)
+git add pkgbuilds/omarchy-metronome
+git commit -m "Add omarchy-metronome"
+gh pr create --repo omacom/omarchy-pkgs --title "Add omarchy-metronome"
+```
+
+Describe the app, link the source and its MIT licence, and say you are its
+author and maintainer, as other package requests there do. After a release,
+Omarchy's watch updates the version and checksums itself; the copy here only
+matters for the first submission.

@@ -11,6 +11,8 @@ pkgbase = omarchy-metronome
 	depends = alsa-lib
 	depends = gcc-libs
 	depends = glibc
+	depends = hicolor-icon-theme
+	optdepends = ttf-jetbrains-mono-nerd: the default interface font
 	source = omarchy-metronome-0.1.0.tar.gz::https://github.com/DouglasdeMoura/omarchy-metronome/archive/refs/tags/v0.1.0.tar.gz
 	sha256sums = SKIP
 

@@ -7,7 +7,8 @@ pkgdesc="A metronome for Omarchy that follows the live theme (latest development
 arch=(x86_64 aarch64)
 url="https://github.com/DouglasdeMoura/omarchy-metronome"
 license=(MIT)
-depends=(quickshell alsa-lib gcc-libs glibc)
+depends=(quickshell alsa-lib gcc-libs glibc hicolor-icon-theme)
+optdepends=('ttf-jetbrains-mono-nerd: the default interface font')
 makedepends=(cargo git)
 provides=("$_pkgname")
 conflicts=("$_pkgname")
@@ -16,8 +17,13 @@ sha256sums=('SKIP')
 
 pkgver() {
   cd "$_pkgname"
-  git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' ||
+  # A pipe hides a failing git describe behind sed's success, so test it
+  # first: before the first tag there is nothing to describe.
+  if git describe --tags >/dev/null 2>&1; then
+    git describe --long --tags --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+  else
     printf "0.1.0.r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+  fi
 }
 
 prepare() {
