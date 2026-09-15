@@ -19,6 +19,15 @@ Canvas {
     property color ink: Theme.color.foreground
 
     readonly property var cell: Rhythm.cell(division, mask, shape)
+
+    // The drawn ink's bounds, measured after each paint, and how far its
+    // centre sits from the box's centre.
+    property real inkX: 0
+    property real inkY: 0
+    property real inkWidth: 0
+    property real inkHeight: 0
+    readonly property real inkOffsetX: inkWidth > 0 ? Math.round(inkX + inkWidth / 2 - width / 2) : 0
+    readonly property real inkOffsetY: inkHeight > 0 ? Math.round(inkY + inkHeight / 2 - height / 2) : 0
     readonly property int tuplet: Rhythm.tuplet(division)
 
     // The figure's scale: the body size by default, smaller for a chip.
@@ -160,6 +169,33 @@ Canvas {
                 ctx.lineTo(right, ty - unit * 0.2)
                 ctx.lineTo(right, ty + unit * 0.1)
                 ctx.stroke()
+            }
+        }
+
+        // Where the ink landed. The box is not the drawing: it keeps room
+        // for flags on the right and for a tuplet's number on top, so a
+        // figure centred by its box sits off true. A holder centres the ink
+        // with inkOffsetX and inkOffsetY instead.
+        var w = Math.floor(width)
+        var h = Math.floor(height)
+        if (w > 0 && h > 0) {
+            var d = ctx.getImageData(0, 0, w, h).data
+            var minX = w, minY = h, maxX = -1, maxY = -1
+            for (var py = 0; py < h; py++) {
+                for (var px = 0; px < w; px++) {
+                    if (d[(py * w + px) * 4 + 3] > 24) {
+                        if (px < minX) minX = px
+                        if (px > maxX) maxX = px
+                        if (py < minY) minY = py
+                        if (py > maxY) maxY = py
+                    }
+                }
+            }
+            if (maxX >= 0) {
+                root.inkX = minX
+                root.inkY = minY
+                root.inkWidth = maxX - minX + 1
+                root.inkHeight = maxY - minY + 1
             }
         }
     }

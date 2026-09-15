@@ -467,16 +467,19 @@ Item {
             // 1 : phi : 1/phi. The widest gap parts reading from pressing,
             // tempo from play; the narrowest keeps play with the three
             // buttons it serves. A short window shrinks each gap only to a
-            // floor, so nothing ever touches.
+            // floor, so nothing ever touches. A tall one spreads the bands
+            // only as far as golden(9), the default window's own height, and
+            // centres them in the rest, so a big screen never pulls them apart.
             readonly property int margin: Theme.golden(4)
+            readonly property real room: Math.min(parent.height, Theme.golden(9))
             readonly property real bands: meters.height + tempoGroup.height + play.height + buttonRow.height
-            readonly property real share: Math.max(0, parent.height - 2 * margin - bands)
+            readonly property real share: Math.max(0, room - 2 * margin - bands)
                                           / (1 + Theme.phi + 1 / Theme.phi)
             readonly property int gapBeats: Math.max(Theme.golden(2), Math.round(share))
             readonly property int gapReach: Math.max(Theme.golden(3), Math.round(share * Theme.phi))
             readonly property int gapTransport: Math.max(Theme.golden(1), Math.round(share / Theme.phi))
             spacing: 0
-            topPadding: margin
+            topPadding: margin + Math.max(0, (parent.height - room) / 2)
             x: (parent.width - width) / 2
 
             // --- per-beat voices, on top of the circle: click to raise ---
@@ -780,7 +783,12 @@ Item {
                         fillColor: Theme.color.lineSoft
                         primary: root.subOpen
 
+                        // Centred by its ink, not its box: a tuplet's number
+                        // and a flag's room would otherwise pull it off true.
                         NoteFigure {
+                            anchors.centerIn: parent
+                            anchors.horizontalCenterOffset: -inkOffsetX
+                            anchors.verticalCenterOffset: -inkOffsetY
                             beatValue: root.denominator
                             division: root.subdivision
                             mask: root.subpattern

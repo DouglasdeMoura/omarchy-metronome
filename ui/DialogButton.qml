@@ -50,11 +50,11 @@ Item {
         border.color: root.frame
     }
 
+    // The content fills the button and places itself: a figure centres
+    // its own ink, which a box sized to the figure could not.
     Item {
         id: slot
-        anchors.centerIn: parent
-        width: childrenRect.width
-        height: childrenRect.height
+        anchors.fill: parent
     }
 
     Text {
