@@ -4,13 +4,13 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-09-15
 
 The first release.
 
 ### Added
 
-- A sample-accurate metronome with a Rust audio backend and a Quickshell
+- Winkel, a sample-accurate metronome with a Rust audio backend and a Quickshell
   interface that follows the live Omarchy theme.
 - Tempo from 10 to 400 BPM with steppers, typing, the arrow keys and tap
   tempo, and the classical tempo marking.
