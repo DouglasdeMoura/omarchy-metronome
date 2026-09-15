@@ -59,10 +59,11 @@ sudo cp packaging/metronome.svg /usr/share/icons/hicolor/scalable/apps/
 ```
 
 If you want Metronome to open as a small floating window instead of a tile, give
-Hyprland a rule (Omarchy's `~/.config/hypr/` user conf or a drop-in):
+Hyprland a rule. Omarchy's Hyprland config is Lua; add this to a file in
+`~/.config/hypr/`, such as `bindings.lua`:
 
-```ini
-windowrule = float, class:^(dev\.douglasmoura\.metronome)$
+```lua
+o.window("^dev\\.douglasmoura\\.metronome$", { float = true, center = true, size = { 377, 610 } })
 ```
 
 ## Architecture
