@@ -74,8 +74,9 @@ is up to Omarchy's maintainers.
 [omacom/omarchy-pkgs](https://github.com/omacom/omarchy-pkgs) needs:
 
 - `PKGBUILD`, the source build, with Omarchy's dependency list style.
-- `.omarchy/package.json`, which watches this repository's `v*` tags, so
-  Omarchy's pipeline picks up each release after a 24-hour quarantine.
+- `.omarchy/package.json`, which watches this repository's GitHub releases
+  for `v*` tags, so Omarchy's pipeline picks up each one after a 24-hour
+  quarantine, updating the version and checksums itself.
 
 To submit, once a release exists:
 

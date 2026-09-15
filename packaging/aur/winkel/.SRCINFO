@@ -14,6 +14,6 @@ pkgbase = winkel
 	depends = hicolor-icon-theme
 	optdepends = ttf-jetbrains-mono-nerd: the default interface font
 	source = winkel-0.1.0.tar.gz::https://github.com/DouglasdeMoura/winkel/archive/refs/tags/v0.1.0.tar.gz
-	sha256sums = SKIP
+	sha256sums = 3f5418ed458f1513a23235e38497fc0ae471986f32d1856072599bc3884aacae
 
 pkgname = winkel

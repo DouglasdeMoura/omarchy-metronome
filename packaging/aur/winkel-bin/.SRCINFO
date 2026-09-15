@@ -15,8 +15,8 @@ pkgbase = winkel-bin
 	provides = winkel
 	conflicts = winkel
 	source_x86_64 = https://github.com/DouglasdeMoura/winkel/releases/download/v0.1.0/winkel-0.1.0-x86_64-linux.tar.gz
-	sha256sums_x86_64 = SKIP
+	sha256sums_x86_64 = e4bd50c822a881543803725b1c78a860d757ab8d0fef6e6c5760f85b00b1f58b
 	source_aarch64 = https://github.com/DouglasdeMoura/winkel/releases/download/v0.1.0/winkel-0.1.0-aarch64-linux.tar.gz
-	sha256sums_aarch64 = SKIP
+	sha256sums_aarch64 = 7927f8fc89cddd67fff24a3c14dc502c554c09c70db24584ddff6b7edb130ff1
 
 pkgname = winkel-bin
