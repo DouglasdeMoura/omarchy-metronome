@@ -10,6 +10,9 @@
 # committed, and master is pushed to aur.archlinux.org. The AUR creates a
 # package the first time its repository is pushed. Needs an SSH key
 # registered with your AUR account; see docs/releasing.md.
+#
+# AUR_COMMIT_NAME and AUR_COMMIT_EMAIL, when both are set, author the AUR
+# commits instead of your git identity; CI commits as github-actions[bot].
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -21,6 +24,10 @@ fi
 [ $# -gt 0 ] || set -- winkel winkel-bin winkel-git
 work="${AUR_WORKDIR:-${XDG_CACHE_HOME:-$HOME/.cache}/winkel-aur}"
 mkdir -p "$work"
+identity=()
+if [ -n "${AUR_COMMIT_NAME:-}" ] && [ -n "${AUR_COMMIT_EMAIL:-}" ]; then
+  identity=(-c "user.name=$AUR_COMMIT_NAME" -c "user.email=$AUR_COMMIT_EMAIL")
+fi
 
 for pkg in "$@"; do
   recipe="$here/$pkg"
@@ -43,10 +50,10 @@ for pkg in "$@"; do
   if git -C "$repo" diff --cached --quiet; then
     echo "$pkg: $ver-$rel already committed"
   elif git -C "$repo" rev-parse -q --verify HEAD >/dev/null; then
-    git -C "$repo" commit -q -m "Update to $ver-$rel"
+    git -C "$repo" "${identity[@]}" commit -q -m "Update to $ver-$rel"
     echo "$pkg: committed update to $ver-$rel"
   else
-    git -C "$repo" commit -q -m "Initial upload: $pkg $ver-$rel"
+    git -C "$repo" "${identity[@]}" commit -q -m "Initial upload: $pkg $ver-$rel"
     echo "$pkg: committed initial upload of $ver-$rel"
   fi
 

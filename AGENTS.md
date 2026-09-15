@@ -83,8 +83,9 @@ the package.
 - `packaging/` — the desktop entry, icon and AppStream metainfo, all named
   after the app id, and `aur/` with the source, `-bin` and `-git` packages.
 - `.github/workflows/` — `ci.yml` runs both test suites in an Arch container;
-  `release.yml` builds x86_64 and aarch64 tarballs on a `v*` tag and publishes
-  the release. See docs/releasing.md.
+  `release.yml` builds x86_64 and aarch64 tarballs on a `v*` tag, publishes
+  the release, then calls `aur.yml`, which publishes the three AUR packages
+  with the `AUR_KEY` secret. See docs/releasing.md.
 
 ## Rules this repo keeps
 

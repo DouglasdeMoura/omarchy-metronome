@@ -1,0 +1,78 @@
+name: AUR
+
+# Publishes winkel, winkel-bin and winkel-git to the AUR. The release
+# workflow calls it after every v* release; run it by hand to publish a
+# release again, or with dry_run to prepare the commits and push nothing.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: The release to publish, such as 0.2.0 or v0.2.0
+        required: true
+        type: string
+      dry_run:
+        description: Prepare and commit, but push nothing
+        type: boolean
+        default: false
+    secrets:
+      AUR_KEY:
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The published release to publish, such as 0.1.0
+        required: true
+        type: string
+      dry_run:
+        description: Prepare and commit, but push nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aur
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm --needed git openssh pacman-contrib
+
+      - uses: actions/checkout@v4
+
+      # makepkg refuses to run as root, so a plain user builds and pushes.
+      - name: Prepare a build user and the AUR key
+        env:
+          AUR_KEY: ${{ secrets.AUR_KEY }}
+        run: |
+          useradd -m builder
+          install -d -m 700 /home/builder/.ssh
+          printf '%s\n' "$AUR_KEY" > /home/builder/.ssh/aur
+          chmod 600 /home/builder/.ssh/aur
+          # The AUR's ed25519 host key, whose fingerprint matches the one
+          # published on https://aur.archlinux.org:
+          # SHA256:RFzBCUItH9LZS0cKB5UE6ceAYhBD5C8GeOBip8Z11+4
+          echo 'aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN' > /home/builder/.ssh/known_hosts
+          printf 'Host aur.archlinux.org\n  User aur\n  IdentityFile ~/.ssh/aur\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' > /home/builder/.ssh/config
+          chown -R builder:builder /home/builder/.ssh "$GITHUB_WORKSPACE"
+
+      - name: Check the key with the AUR
+        run: runuser -u builder -- ssh -o BatchMode=yes aur@aur.archlinux.org help > /dev/null
+
+      - name: Set versions and checksums
+        run: runuser -u builder -- packaging/aur/set-version.sh "${{ inputs.version }}"
+
+      - name: Publish
+        run: >-
+          runuser -u builder --
+          env AUR_WORKDIR=/home/builder/aur
+          AUR_COMMIT_NAME='github-actions[bot]'
+          AUR_COMMIT_EMAIL='github-actions[bot]@users.noreply.github.com'
+          packaging/aur/publish.sh ${{ inputs.dry_run && '--dry-run' || '' }}
+          winkel winkel-bin winkel-git

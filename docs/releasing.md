@@ -34,36 +34,31 @@ The `Release` workflow builds `winkel-X.Y.Z-x86_64-linux.tar.gz`
 and `…-aarch64-linux.tar.gz` with their `.sha256` files and publishes them as
 the GitHub release, with notes generated from the commits.
 
-## 4. Update the AUR
+## 4. The AUR
 
-Do this once the release exists, since the source and `-bin` packages
-download from it. For `winkel` and `winkel-bin`:
+The release workflow publishes `winkel`, `winkel-bin` and `winkel-git` to
+the AUR once the release exists, through `.github/workflows/aur.yml`. It sets
+each recipe's version and checksums with `packaging/aur/set-version.sh`,
+regenerates `.SRCINFO`, and pushes with `packaging/aur/publish.sh`, committing
+as `github-actions[bot]`. It authenticates with the `AUR_KEY` repository
+secret, an SSH private key registered with the AUR account.
 
-```sh
-cd packaging/aur/winkel
-updpkgsums                          # replaces SKIP with the real checksums
-makepkg --printsrcinfo > .SRCINFO
-makepkg -si                         # build, test and install it locally
-```
-
-Then publish to the AUR with `packaging/aur/publish.sh`. It needs an SSH key
-registered with your AUR account; `~/.ssh/config` should point
-`aur.archlinux.org` at it, with `User aur`. Check the key first:
+To publish a release again, or to try it without pushing:
 
 ```sh
-ssh aur@aur.archlinux.org help        # lists commands when the key is accepted
-packaging/aur/publish.sh --dry-run    # clone, copy and commit, push nothing
-packaging/aur/publish.sh winkel winkel-bin
+gh workflow run aur.yml -f version=X.Y.Z -f dry_run=true    # prepare, push nothing
+gh workflow run aur.yml -f version=X.Y.Z -f dry_run=false   # publish
 ```
 
-The script regenerates each `.SRCINFO`, clones the package's AUR repository
-into `~/.cache/winkel-aur`, commits the `PKGBUILD` and `.SRCINFO`, and pushes
-`master`. The AUR creates a package the first time its repository is pushed.
+To keep the recipes in this repository in step with the release, run
+`packaging/aur/set-version.sh X.Y.Z` and commit the result.
 
-`winkel-git` builds whatever is on `main`, so it is published once
-and only updated when its PKGBUILD changes.
+Publishing from this machine still works, with an AUR key in `~/.ssh/config`:
 
-Commit the updated checksums and `.SRCINFO` files back to this repository.
+```sh
+packaging/aur/publish.sh --dry-run
+packaging/aur/publish.sh
+```
 
 ## 5. The Omarchy package repository
 
