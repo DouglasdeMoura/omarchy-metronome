@@ -449,8 +449,9 @@ Item {
 
     // --- layout ---
     // No chrome of its own: the desktop owns the window's frame and its
-    // close, and the instrument is centred in the whole window, so a tiled
-    // window and a floating one both read as composed, not stretched.
+    // close. The four bands spread down the whole height the way a phone
+    // app sits in its screen: what the player reads at the top, what they
+    // press at the bottom, within reach of a thumb.
     Item {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
@@ -460,14 +461,23 @@ Item {
         Column {
             id: content
             width: Math.min(parent.width, Theme.space(320))
-            // Every dimension on this view is a step of Theme.golden, so any
-            // two of them are related by a power of phi. The vertical rhythm:
-            // a caption sits golden(0) from its numeral, the buttons golden(2)
-            // from the transport they serve, and the three bands, beats,
-            // tempo, transport, stand golden(3) apart.
-            spacing: Theme.golden(3)
+            // Every dimension on this view is a step of Theme.golden. The
+            // beats hang golden(4) from the top and the buttons stand
+            // golden(4) from the bottom; the height left over splits
+            // 1 : phi : 1/phi. The widest gap parts reading from pressing,
+            // tempo from play; the narrowest keeps play with the three
+            // buttons it serves. A short window shrinks each gap only to a
+            // floor, so nothing ever touches.
+            readonly property int margin: Theme.golden(4)
+            readonly property real bands: meters.height + tempoGroup.height + play.height + buttonRow.height
+            readonly property real share: Math.max(0, parent.height - 2 * margin - bands)
+                                          / (1 + Theme.phi + 1 / Theme.phi)
+            readonly property int gapBeats: Math.max(Theme.golden(2), Math.round(share))
+            readonly property int gapReach: Math.max(Theme.golden(3), Math.round(share * Theme.phi))
+            readonly property int gapTransport: Math.max(Theme.golden(1), Math.round(share / Theme.phi))
+            spacing: 0
+            topPadding: margin
             x: (parent.width - width) / 2
-            y: Math.max(Theme.golden(2), (parent.height - height) / 2)
 
             // --- per-beat voices, on top of the circle: click to raise ---
             // Empty is silence; one, two or three filled bars are the low,
@@ -537,9 +547,12 @@ Item {
                 }
             }
 
+            Item { width: 1; height: content.gapBeats }
+
             // --- the tempo: marking on top, the numeral between two steppers
             // that sit on its own centre line ---
             Column {
+                id: tempoGroup
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Theme.golden(0)
 
@@ -672,11 +685,14 @@ Item {
                 }
             }
 
+            Item { width: 1; height: content.gapReach }
+
             // --- the transport band: the play circle, and the meter and tap
-            // beneath it at golden(2) ---
+            // beneath it, the narrowest of the view's gaps ---
             Column {
+                id: transportBand
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Theme.golden(2)
+                spacing: content.gapTransport
 
                 // --- the transport: the one accent on the view, dead centre.
                 // A solid accent circle, at rest and while the metronome runs ---
@@ -717,6 +733,7 @@ Item {
                 // the transport, the steppers' height and fill so the transport
                 // alone stands out; the meter's ink lights while its editor is open ---
                 Row {
+                    id: buttonRow
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: Theme.golden(1)
 
@@ -778,19 +795,23 @@ Item {
                     }
                 }
             }
+        }
 
-            // Only when something is wrong: the error under the controls, in
-            // urgent ink, the one place the window says so.
-            Text {
-                width: parent.width
-                visible: root.errorMessage.length > 0
-                text: root.errorMessage
-                color: Theme.color.urgent
-                font.family: Theme.font.family
-                font.pixelSize: Theme.font.caption
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.Wrap
-            }
+        // Only when something is wrong: the error under the buttons, in
+        // urgent ink, the one place the window says so. Outside the column,
+        // so its arrival never moves a band.
+        Text {
+            x: content.x
+            y: content.topPadding + meters.height + content.gapBeats + tempoGroup.height
+               + content.gapReach + transportBand.height + Theme.golden(1)
+            width: content.width
+            visible: root.errorMessage.length > 0
+            text: root.errorMessage
+            color: Theme.color.urgent
+            font.family: Theme.font.family
+            font.pixelSize: Theme.font.caption
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
         }
 
         // --- the time signature editor, over everything while open ---
