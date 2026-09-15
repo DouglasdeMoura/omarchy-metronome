@@ -50,7 +50,7 @@ pub const DENOMINATORS: [u32; 4] = [1, 2, 4, 8];
 impl Default for Params {
     fn default() -> Self {
         Params {
-            // A first launch opens on the setup Metronome was tuned with: 80 in
+            // A first launch opens on the setup Winkel was tuned with: 80 in
             // 4/4, no subdivision, high on the one and low on the rest of
             // the bar, and a pattern already waiting in the slots past the
             // fourth beat for a longer meter.
@@ -602,7 +602,7 @@ pub struct Handle {
 pub fn launch(initial: Params, silent_forced: bool) -> Handle {
     let (cmd_tx, cmd_rx) = std::sync::mpsc::channel();
     let control = std::thread::Builder::new()
-        .name("metro-control".into())
+        .name("winkel-control".into())
         .spawn(move || control_main(cmd_rx, initial, silent_forced))
         .expect("spawn control thread");
     Handle { cmd_tx, control }
@@ -648,7 +648,7 @@ fn control_main(cmd_rx: Receiver<proto::Command>, initial: Params, silent_forced
     // The out thread owns the event receiver and is the only other writer to
     // stdout; lines are whole because each write takes stdout's own lock.
     let out_thread = std::thread::Builder::new()
-        .name("metro-out".into())
+        .name("winkel-out".into())
         .spawn(move || {
             for ev in ev_rx {
                 let line = match ev {
@@ -817,7 +817,7 @@ mod audio {
             let default = device
                 .default_output_config()
                 .map_err(|err| {
-                    eprintln!("omarchy-metronome: no output configuration ({err})");
+                    eprintln!("winkel: no output configuration ({err})");
                 })
                 .ok()?;
             let format = default.sample_format();
@@ -855,9 +855,9 @@ mod audio {
                                 _stream: stream,
                             })
                         }
-                        Err(err) => eprintln!("omarchy-metronome: output would not start at {rate} Hz ({err})"),
+                        Err(err) => eprintln!("winkel: output would not start at {rate} Hz ({err})"),
                     },
-                    Err(err) => eprintln!("omarchy-metronome: output could not be built at {rate} Hz ({err})"),
+                    Err(err) => eprintln!("winkel: output could not be built at {rate} Hz ({err})"),
                 }
             }
             None
@@ -873,7 +873,7 @@ mod clock {
 
     pub fn spawn(shared: Arc<Shared>, sr: f64) -> std::thread::JoinHandle<()> {
         std::thread::Builder::new()
-            .name("metro-clock".into())
+            .name("winkel-clock".into())
             .spawn(move || {
                 let mut tl = Timeline::new();
                 let mut events = Vec::new();

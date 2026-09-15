@@ -1,4 +1,4 @@
-# Installs Metronome from a source checkout or from a release tarball.
+# Installs Winkel from a source checkout or from a release tarball.
 #
 #   make                         build the release binary (needs cargo)
 #   sudo make install            install to /usr/local
@@ -8,8 +8,8 @@
 # A release tarball carries a prebuilt binary beside this Makefile, so
 # `make install` there needs no Rust toolchain.
 
-NAME     := omarchy-metronome
-APP_ID   := dev.douglasmoura.metronome
+NAME     := winkel
+APP_ID   := dev.douglasmoura.winkel
 PREFIX   ?= /usr/local
 DESTDIR  ?=
 BINDIR   := $(DESTDIR)$(PREFIX)/bin

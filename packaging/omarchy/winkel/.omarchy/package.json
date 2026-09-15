@@ -1,0 +1,11 @@
+{
+  "source": "local",
+  "min_release_age": "24h",
+  "upstream": {
+    "git_tags": "https://github.com/DouglasdeMoura/winkel.git",
+    "tag_pattern": "v{pkgver}",
+    "sources": {
+      "any": ["https://github.com/DouglasdeMoura/winkel/archive/refs/tags/{tag}.tar.gz"]
+    }
+  }
+}

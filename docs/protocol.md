@@ -1,6 +1,6 @@
-# The Metronome protocol
+# The Winkel protocol
 
-One json object per line, both ways, over the stdio of `omarchy-metronome --backend`. The
+One json object per line, both ways, over the stdio of `winkel --backend`. The
 UI (`ui/Backend.qml`) is the only client; `src/backend/proto.rs` is the only
 interpreter. A line the backend cannot read becomes an `error` event, never a
 silence.
@@ -16,7 +16,7 @@ Every request names its command in `"c"`.
 | `stop` | — | stop at once; a `stopped` event answers with the beat total |
 | `toggle` | — | start if stopped, stop if running |
 | `params` | any of `bpm`, `beats`, `denominator`, `subdivision`, `subpattern`, `subshape`, `volume`, `voices` | apply; tempo, signature and subdivision changes land at the next click, volume at the next click, numeric ranges clamped; invalid types, voices, denominators, subdivisions, subpatterns and subshapes rejected |
-| `save` | same fields as `params` | apply and persist to `~/.config/metronome/state.json` |
+| `save` | same fields as `params` | apply and persist to `~/.config/winkel/state.json` |
 | `quit` | — | drain (stop, last events out), then one `quitready` |
 
 ```json

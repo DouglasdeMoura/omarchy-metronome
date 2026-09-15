@@ -30,10 +30,10 @@ Singleton {
     property var messages: ({})
     property var warned: ({})
 
-    // METRONOME_LANG wins, then the POSIX order: LANGUAGE's first entry when a
+    // WINKEL_LANG wins, then the POSIX order: LANGUAGE's first entry when a
     // real locale is set, LC_ALL, LC_MESSAGES, LANG.
     function detect() {
-        var forced = Quickshell.env("METRONOME_LANG")
+        var forced = Quickshell.env("WINKEL_LANG")
         if (forced) return normalize(forced)
         var set = Quickshell.env("LC_ALL") || Quickshell.env("LC_MESSAGES") || Quickshell.env("LANG") || ""
         var priority = Quickshell.env("LANGUAGE")
@@ -102,7 +102,7 @@ Singleton {
         })
     }
 
-    // CLDR's plural categories for whole numbers, by language. Metronome only
+    // CLDR's plural categories for whole numbers, by language. Winkel only
     // ever counts whole things; a language not listed takes one and other.
     function pluralCategory(n) {
         var mod10 = n % 10

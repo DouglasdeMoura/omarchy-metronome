@@ -1,8 +1,8 @@
-pkgbase = omarchy-metronome
+pkgbase = winkel
 	pkgdesc = A metronome for Omarchy that follows the live theme (Rust + Quickshell)
 	pkgver = 0.1.0
 	pkgrel = 1
-	url = https://github.com/DouglasdeMoura/omarchy-metronome
+	url = https://github.com/DouglasdeMoura/winkel
 	arch = x86_64
 	arch = aarch64
 	license = MIT
@@ -13,7 +13,7 @@ pkgbase = omarchy-metronome
 	depends = glibc
 	depends = hicolor-icon-theme
 	optdepends = ttf-jetbrains-mono-nerd: the default interface font
-	source = omarchy-metronome-0.1.0.tar.gz::https://github.com/DouglasdeMoura/omarchy-metronome/archive/refs/tags/v0.1.0.tar.gz
+	source = winkel-0.1.0.tar.gz::https://github.com/DouglasdeMoura/winkel/archive/refs/tags/v0.1.0.tar.gz
 	sha256sums = SKIP
 
-pkgname = omarchy-metronome
+pkgname = winkel

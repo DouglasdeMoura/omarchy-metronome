@@ -1,6 +1,6 @@
-//@ pragma AppId dev.douglasmoura.metronome
-//@ pragma ShellId metronome
-//@ pragma CacheDir $BASE/metronome
+//@ pragma AppId dev.douglasmoura.winkel
+//@ pragma ShellId winkel
+//@ pragma CacheDir $BASE/winkel
 
 import Quickshell
 import QtQuick

@@ -1,26 +1,14 @@
 # Maintainer: Douglas Moura <doug@douglasmoura.com>
-
-pkgname=omarchy-metronome
+pkgname=winkel
 pkgver=0.1.0
 pkgrel=1
-pkgdesc='A metronome for Omarchy that follows the live theme'
-arch=('x86_64' 'aarch64')
-url='https://github.com/DouglasdeMoura/omarchy-metronome'
-license=('MIT')
-
-depends=(
-  'alsa-lib'
-  'gcc-libs'
-  'glibc'
-  'hicolor-icon-theme'
-  'quickshell'
-)
-makedepends=('cargo')
-optdepends=(
-  'ttf-jetbrains-mono-nerd: the default interface font'
-)
-conflicts=('omarchy-metronome-bin' 'omarchy-metronome-git')
-
+pkgdesc="A metronome for Omarchy that follows the live theme (Rust + Quickshell)"
+arch=(x86_64 aarch64)
+url="https://github.com/DouglasdeMoura/winkel"
+license=(MIT)
+depends=(quickshell alsa-lib gcc-libs glibc hicolor-icon-theme)
+optdepends=('ttf-jetbrains-mono-nerd: the default interface font')
+makedepends=(cargo)
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
@@ -40,7 +28,7 @@ build() {
 check() {
   cd "$pkgname-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
-  METRONOME_SILENT=1 cargo test --frozen
+  WINKEL_SILENT=1 cargo test --frozen
 }
 
 package() {

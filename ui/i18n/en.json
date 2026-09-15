@@ -1,5 +1,5 @@
 {
-  "app.name": "Metronome",
+  "app.name": "Winkel",
   "tempo.larghissimo": "Larghissimo",
   "tempo.grave": "Grave",
   "tempo.largo": "Largo",
@@ -65,8 +65,8 @@
   "error.backendExited": "The backend exited with code {code}",
   "error.wire.no_output": "No usable audio output, running silently",
   "error.wire.device_failed": "The audio device failed ({detail})",
-  "error.wire.already_running": "Metronome is already running",
-  "error.wire.lock_failed": "Metronome could not claim its lock ({detail})",
+  "error.wire.already_running": "Winkel is already running",
+  "error.wire.lock_failed": "Winkel could not claim its lock ({detail})",
   "error.wire.state_not_saved": "The settings were not saved ({detail})",
   "error.wire.request_refused": "A setting was refused ({detail})",
   "error.wire.request_unreadable": "A request could not be read ({detail})",

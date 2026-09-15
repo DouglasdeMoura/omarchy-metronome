@@ -117,8 +117,8 @@ Item {
 
     Process {
         id: child
-        // METRONOME_BIN is the dev seam, the way gui.rs hands itself over.
-        command: [Quickshell.env("METRONOME_BIN") || "omarchy-metronome", "--backend"]
+        // WINKEL_BIN is the dev seam, the way gui.rs hands itself over.
+        command: [Quickshell.env("WINKEL_BIN") || "winkel", "--backend"]
         running: true
         stdinEnabled: true
 

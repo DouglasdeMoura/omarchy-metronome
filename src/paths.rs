@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-// Where the QML lives: METRONOME_UI first, so a checkout always wins for its own
+// Where the QML lives: WINKEL_UI first, so a checkout always wins for its own
 // runs; then beside the binary; then a capped walk up the tree, which finds
-// both the cargo checkout (`target/release/omarchy-metronome` → `ui/` at the repo root)
-// and a prefixed install (`/usr/local/bin/omarchy-metronome` → `/usr/local/share/omarchy-metronome/ui`);
+// both the cargo checkout (`target/release/winkel` → `ui/` at the repo root)
+// and a prefixed install (`/usr/local/bin/winkel` → `/usr/local/share/winkel/ui`);
 // then the system path pacman owns.
 pub fn ui_dir() -> Option<PathBuf> {
-    if let Some(v) = std::env::var_os("METRONOME_UI") {
+    if let Some(v) = std::env::var_os("WINKEL_UI") {
         if !v.is_empty() {
             return Some(PathBuf::from(v));
         }
@@ -21,7 +21,7 @@ pub fn ui_dir() -> Option<PathBuf> {
         if repo.join("shell.qml").is_file() {
             return Some(repo);
         }
-        let installed = dir.join("share/omarchy-metronome/ui");
+        let installed = dir.join("share/winkel/ui");
         if installed.join("shell.qml").is_file() {
             return Some(installed);
         }
@@ -29,7 +29,7 @@ pub fn ui_dir() -> Option<PathBuf> {
             break;
         }
     }
-    let system = PathBuf::from("/usr/share/omarchy-metronome/ui");
+    let system = PathBuf::from("/usr/share/winkel/ui");
     if system.join("shell.qml").is_file() {
         return Some(system);
     }
@@ -42,7 +42,7 @@ pub fn has_display() -> bool {
         .any(|var| std::env::var_os(var).is_some_and(|v| !v.is_empty()))
 }
 
-// Whether a Metronome backend already holds the single-instance lock.
+// Whether a Winkel backend already holds the single-instance lock.
 pub fn backend_running() -> bool {
     crate::backend::run::instance_is_running()
 }
@@ -51,7 +51,7 @@ pub fn backend_running() -> bool {
 mod tests {
     #[test]
     fn a_display_is_wayland_or_x() {
-        // The assertion runs on the machine building Metronome; headless CI keeps
+        // The assertion runs on the machine building Winkel; headless CI keeps
         // both unset, a desktop always has one. Either way the answer is honest.
         let has = super::has_display();
         let wayland = std::env::var_os("WAYLAND_DISPLAY").is_some_and(|v| !v.is_empty());

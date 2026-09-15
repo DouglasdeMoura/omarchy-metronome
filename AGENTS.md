@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Notes for working on Metronome, an Omarchy app in Flea's shape:
+Notes for working on Winkel, an Omarchy app in Flea's shape:
 a std-only Rust backend speaking json lines over stdio, a Quickshell/QML
 frontend, and a look that follows the live Omarchy theme.
 
@@ -11,33 +11,36 @@ cargo build --release                  # the binary also finds ./ui relative to 
 cargo test                             # timeline, protocol, json, state, catalogues — all offline
 bash tests/ui.sh                       # the QML frontend, offscreen
 make test                              # both
-./target/release/omarchy-metronome     # launch the app (needs a wayland session + qs)
+./target/release/winkel     # launch the app (needs a wayland session + qs)
 ```
 
 Headless / CI:
 
 ```sh
-METRONOME_SILENT=1 ./target/release/omarchy-metronome --backend < lines-of-json
+WINKEL_SILENT=1 ./target/release/winkel --backend < lines-of-json
 ```
 
-Launch `target/release/omarchy-metronome`, never `qs -p ui/shell.qml` and never
-a stale `target/release/pulse` or `target/release/metronome` from before the
-renames: only the current binary sets `METRONOME_BIN`, and without it the
+Launch `target/release/winkel`, never `qs -p ui/shell.qml` and never
+a stale `target/release/pulse`, `target/release/metronome` or
+`target/release/omarchy-metronome` from before the renames: only the current binary sets `WINKEL_BIN`, and without it the
 window reports that the backend could not be started.
 
-The installed name is `omarchy-metronome` because Arch's `extra` repository
-already ships GNOME Metronome as `metronome`, with `/usr/bin/metronome` and
-`/usr/share/metronome`. The window still says Metronome, the app id is
-`dev.douglasmoura.metronome`, and the settings and `METRONOME_*` variables keep
-the short name.
+The app is Winkel, after Dietrich Nikolaus Winkel, who invented the mechanical
+metronome that Maelzel went on to patent. Its earlier names were Pulse and
+Metronome; `metronome` was dropped because Arch's `extra` repository ships GNOME
+Metronome with `/usr/bin/metronome` and `/usr/share/metronome`. The binary and
+paths are `winkel`, the app id is `dev.douglasmoura.winkel`, and the ordinary
+word "metronome" still describes what the app is. The README gets an
+`omarchy pkg add winkel` install line only once omacom/omarchy-pkgs accepts
+the package.
 
 ## The shape
 
 - `src/main.rs` — `--backend`, `--version`, anything else is a window.
-- `src/gui.rs` — execs `qs -p <ui>/shell.qml`, passing `METRONOME_BIN` so the QML
+- `src/gui.rs` — execs `qs -p <ui>/shell.qml`, passing `WINKEL_BIN` so the QML
   spawns this exact binary as its backend.
-- `src/paths.rs` — finds the ui dir: `METRONOME_UI`, beside the binary, up the
-  tree to a checkout or a prefixed install, then `/usr/share/omarchy-metronome/ui`.
+- `src/paths.rs` — finds the ui dir: `WINKEL_UI`, beside the binary, up the
+  tree to a checkout or a prefixed install, then `/usr/share/winkel/ui`.
 - `src/backend/run.rs` — the stdin loop and the single-instance lock in
   `$XDG_RUNTIME_DIR`.
 - `src/backend/proto.rs` — the one interpreter of docs/protocol.md; the wire
@@ -50,13 +53,14 @@ the short name.
   The stream never carries digital silence: a -74 dBFS noise floor runs
   under everything, because Bluetooth earbuds sleep on silence and eat the
   next tick. Tests bound quiet by `FLOOR_AMP`, never by zero.
-- `src/backend/state.rs` — `~/.config/metronome/state.json`. With no state of
-  its own, a first run reads `~/.config/pulse/state.json` once; that directory
+- `src/backend/state.rs` — `~/.config/winkel/state.json`. With no state of
+  its own, a first run reads `~/.config/metronome/state.json` or
+  `~/.config/pulse/state.json` once; the last directory
   also holds PulseAudio's cookie, so nothing there is ever written.
 - `src/json.rs` — hand-rolled json (parse + render) since the backend is
   std-only. cpal is the single dependency, and the only one planned.
 - `src/i18n_check.rs` — test-only: holds the catalogues to the UI's keys.
-- `ui/shell.qml` — the window: app id `dev.douglasmoura.metronome`, 377×610.
+- `ui/shell.qml` — the window: app id `dev.douglasmoura.winkel`, 377×610.
 - `ui/Main.qml` — the one screen, its focus ring, and the time signature,
   subdivision and keys dialogs.
 - `ui/Rhythm.js` — the subdivision catalogue and its names. A cell is a

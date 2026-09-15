@@ -1,11 +1,11 @@
 # Maintainer: Douglas Moura <doug@douglasmoura.com>
-pkgname=omarchy-metronome-bin
-_pkgname=omarchy-metronome
+pkgname=winkel-bin
+_pkgname=winkel
 pkgver=0.1.0
 pkgrel=1
 pkgdesc="A metronome for Omarchy that follows the live theme (prebuilt binary)"
 arch=(x86_64 aarch64)
-url="https://github.com/DouglasdeMoura/omarchy-metronome"
+url="https://github.com/DouglasdeMoura/winkel"
 license=(MIT)
 depends=(quickshell alsa-lib gcc-libs glibc hicolor-icon-theme)
 optdepends=('ttf-jetbrains-mono-nerd: the default interface font')

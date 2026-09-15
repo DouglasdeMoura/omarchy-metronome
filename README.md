@@ -1,9 +1,18 @@
-# Metronome
+# Winkel
 
 A metronome for [Omarchy](https://omarchy.org): Rust backend, Quickshell/QML
 frontend, and a look that follows your Omarchy theme live — change themes with
-`omarchy theme set` and Metronome repaints without a restart, the same way
+`omarchy theme set` and Winkel repaints without a restart, the same way
 [Flea](https://github.com/thisisgm/flea) does.
+
+## Why Winkel
+
+The mechanical metronome was invented by Dietrich Nikolaus Winkel, in
+Amsterdam, in 1814: a spring-driven inverted pendulum with a fixed and a
+sliding weight. Johann Nepomuk Maelzel took Winkel's ideas, added a numbered
+scale, named the device a metronome, patented it in England in 1815, and from
+1816 mass-produced it as "Maelzel's Metronome" — which is why scores still
+mark tempos M.M. This app carries the name of the man who actually built it.
 
 ![stack](https://img.shields.io/badge/Rust-backend-informational) ![stack](https://img.shields.io/badge/Quickshell%2FQML-frontend-purple)
 
@@ -38,9 +47,9 @@ frontend, and a look that follows your Omarchy theme live — change themes with
   each language's rules, and right-to-left languages mirror the window. See
   [docs/i18n.md](docs/i18n.md).
 - **Remembers itself**: tempo, meter, per-beat voices and subdivision persist
-  in `~/.config/metronome/state.json`. A first launch opens at 80 BPM in 4/4.
-  Settings saved before the app was renamed, in `~/.config/pulse`, are read
-  once and carried over.
+  in `~/.config/winkel/state.json`. A first launch opens at 80 BPM in 4/4.
+  Settings saved under the app's earlier names, in `~/.config/metronome` or
+  `~/.config/pulse`, are read once and carried over.
 - **One at a time**: a second launch leaves the running metronome alone, so two
   never tick against each other.
 - **Keyboard-first**, like Flea. Press `?` for the full list in the app:
@@ -59,15 +68,15 @@ frontend, and a look that follows your Omarchy theme live — change themes with
 
 ## Requirements
 
-Metronome runs on Linux with a graphical session.
+Winkel runs on Linux with a graphical session.
 
 | | Needed | Notes |
 | --- | --- | --- |
 | **Quickshell** | yes | The interface runs in Quickshell (`qs`). Arch: `quickshell`. |
 | **ALSA library** | yes | The audio backend's link to the sound system, `alsa-lib`, with PipeWire, PulseAudio or plain ALSA behind it. |
 | **Wayland or X11** | yes | Any desktop; Omarchy's Hyprland is the home turf. |
-| **JetBrainsMono Nerd Font** | recommended | The default font; set `METRONOME_FONT` to use another. |
-| **Omarchy** | optional | Supplies the live theme. Without it Metronome uses its built-in palette. |
+| **JetBrainsMono Nerd Font** | recommended | The default font; set `WINKEL_FONT` to use another. |
+| **Omarchy** | optional | Supplies the live theme. Without it Winkel uses its built-in palette. |
 | **Hyprland** | optional | Supplies corner rounding and the reduced-motion setting. |
 
 Building from source also needs Rust 1.89 or newer with cargo, the ALSA
@@ -76,34 +85,33 @@ Debian and Ubuntu), `pkg-config` and `make`.
 
 ## Installing
 
-### Omarchy and Arch Linux (AUR)
+### Arch Linux and Omarchy (AUR)
 
 ```sh
-omarchy pkg aur add omarchy-metronome   # on Omarchy
-yay -S omarchy-metronome                # any Arch system with an AUR helper
+yay -S winkel
 ```
 
-Three packages are available: `omarchy-metronome` builds the release from
-source, `omarchy-metronome-bin` installs the prebuilt binary, and
-`omarchy-metronome-git` builds the latest development version.
+Three packages are available: `winkel` builds the release from
+source, `winkel-bin` installs the prebuilt binary, and
+`winkel-git` builds the latest development version.
 
 ### Release tarball
 
 Prebuilt binaries for x86_64 and aarch64 are attached to every
-[release](https://github.com/DouglasdeMoura/omarchy-metronome/releases). They
+[release](https://github.com/DouglasdeMoura/winkel/releases). They
 need Quickshell and the ALSA library installed, but no Rust toolchain:
 
 ```sh
-tar xzf omarchy-metronome-0.1.0-x86_64-linux.tar.gz
-cd omarchy-metronome-0.1.0-x86_64-linux
+tar xzf winkel-0.1.0-x86_64-linux.tar.gz
+cd winkel-0.1.0-x86_64-linux
 sudo make install
 ```
 
 ### From source
 
 ```sh
-git clone https://github.com/DouglasdeMoura/omarchy-metronome
-cd omarchy-metronome
+git clone https://github.com/DouglasdeMoura/winkel
+cd winkel
 make
 sudo make install                 # to /usr/local; PREFIX=/usr to change it
 ```
@@ -115,10 +123,10 @@ sudo make install                 # to /usr/local; PREFIX=/usr to change it
 Start it from your launcher, or:
 
 ```sh
-omarchy-metronome
+winkel
 ```
 
-From a checkout, `./target/release/omarchy-metronome` finds its own `ui/`.
+From a checkout, `./target/release/winkel` finds its own `ui/`.
 Launch the binary, not `qs` directly: the binary tells the window where its
 backend is.
 
@@ -126,18 +134,18 @@ The development switches, see `src/paths.rs` and `src/gui.rs`:
 
 | variable | effect |
 | --- | --- |
-| `METRONOME_UI` | the `ui/` directory to load |
-| `METRONOME_BIN` | the backend binary the window starts |
-| `METRONOME_SILENT` | run the protocol without audio, for tests and headless boxes |
-| `METRONOME_LANG` | force a language, or `pseudo` / `pseudo-rtl` to test translations |
-| `METRONOME_FONT` | the font family |
+| `WINKEL_UI` | the `ui/` directory to load |
+| `WINKEL_BIN` | the backend binary the window starts |
+| `WINKEL_SILENT` | run the protocol without audio, for tests and headless boxes |
+| `WINKEL_LANG` | force a language, or `pseudo` / `pseudo-rtl` to test translations |
+| `WINKEL_FONT` | the font family |
 
-If you want Metronome to open as a small floating window instead of a tile, give
+If you want Winkel to open as a small floating window instead of a tile, give
 Hyprland a rule. Omarchy's Hyprland config is Lua; add this to a file in
 `~/.config/hypr/`, such as `bindings.lua`:
 
 ```lua
-o.window("^dev\\.douglasmoura\\.metronome$", { float = true, center = true, size = { 377, 610 } })
+o.window("^dev\\.douglasmoura\\.winkel$", { float = true, center = true, size = { 377, 610 } })
 ```
 
 ## Architecture
@@ -145,9 +153,9 @@ o.window("^dev\\.douglasmoura\\.metronome$", { float = true, center = true, size
 Two processes, one app — Flea's shape:
 
 ```
-omarchy-metronome (CLI)
- └─ exec qs -p ui/shell.qml                      the window; METRONOME_BIN tells QML who to call
-     └─ Process: omarchy-metronome --backend     json lines over stdio, docs/protocol.md
+winkel (CLI)
+ └─ exec qs -p ui/shell.qml                      the window; WINKEL_BIN tells QML who to call
+     └─ Process: winkel --backend     json lines over stdio, docs/protocol.md
          └─ cpal output stream           the timeline and the clicks
 ```
 

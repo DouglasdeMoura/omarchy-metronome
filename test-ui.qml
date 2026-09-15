@@ -1,6 +1,6 @@
 import Quickshell
 import QtQuick
-import "ui" as Metronome
+import "ui" as Winkel
 import "ui/Rhythm.js" as Rhythm
 
 ShellRoot {
@@ -18,7 +18,7 @@ ShellRoot {
         function params(fields) { patched = fields }
         function save(fields) { saved = fields }
     }
-    Metronome.Main { id: main; backend: backend; width: 380; height: 600 }
+    Winkel.Main { id: main; backend: backend; width: 380; height: 600 }
     Timer {
         interval: 100
         running: true
@@ -63,20 +63,20 @@ ShellRoot {
             check(Rhythm.CELLS.length === want.length, "catalogue size " + Rhythm.CELLS.length)
             for (var c = 0; c < want.length; c++) {
                 var cell = Rhythm.CELLS[c]
-                var got = Rhythm.cellName(4, Rhythm.cell(cell.n, cell.mask, cell.shape), Metronome.I18n)
+                var got = Rhythm.cellName(4, Rhythm.cell(cell.n, cell.mask, cell.shape), Winkel.I18n)
                 check(got === want[c], "cell " + c + ": " + got + " != " + want[c])
             }
             // A tick-edited spelling keeps its figures: the swing cell's first
             // figure at rest is a quarter rest, not two eighth rests.
-            check(Rhythm.cellName(4, Rhythm.cell(3, 4, 5), Metronome.I18n) === "Triplet quarter rest, eighth", "shape survives a rest")
-            check(Rhythm.cellName(4, Rhythm.cell(3, 4), Metronome.I18n) === "Triplet quarter rest, eighth", "the catalogue spells a bare pattern")
+            check(Rhythm.cellName(4, Rhythm.cell(3, 4, 5), Winkel.I18n) === "Triplet quarter rest, eighth", "shape survives a rest")
+            check(Rhythm.cellName(4, Rhythm.cell(3, 4), Winkel.I18n) === "Triplet quarter rest, eighth", "the catalogue spells a bare pattern")
             check(Rhythm.cell(6, 1, 33).items.length === 6, "a span no figure spells falls back to a figure per slot")
             // Localization: English is the source, a locale switch retranslates
             // bound text in place, plural rules follow the language, and a
             // right-to-left language mirrors the layout.
-            var I18n = Metronome.I18n
+            var I18n = Winkel.I18n
             check(I18n.locale === "en" && I18n.tr("dialog.ok") === "OK", "the tests run in English")
-            check(I18n.tr("app.name") === "Metronome", "the app's name is a catalogue word")
+            check(I18n.tr("app.name") === "Winkel", "the app's name is a catalogue word")
             check(main.tempoName === "Moderato", "the tempo marking comes from the catalogue")
             check(I18n.tr("note.sixteenth", { count: 2 }) === "two sixteenths", "an exact plural form")
             check(I18n.tr("note.sixteenth", { count: 9 }) === "9 sixteenths", "the other form fills its count")

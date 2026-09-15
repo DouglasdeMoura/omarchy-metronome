@@ -1,8 +1,8 @@
-pkgbase = omarchy-metronome-git
+pkgbase = winkel-git
 	pkgdesc = A metronome for Omarchy that follows the live theme (latest development version)
 	pkgver = 0.1.0.r0.g0000000
 	pkgrel = 1
-	url = https://github.com/DouglasdeMoura/omarchy-metronome
+	url = https://github.com/DouglasdeMoura/winkel
 	arch = x86_64
 	arch = aarch64
 	license = MIT
@@ -14,9 +14,9 @@ pkgbase = omarchy-metronome-git
 	depends = glibc
 	depends = hicolor-icon-theme
 	optdepends = ttf-jetbrains-mono-nerd: the default interface font
-	provides = omarchy-metronome
-	conflicts = omarchy-metronome
-	source = omarchy-metronome::git+https://github.com/DouglasdeMoura/omarchy-metronome.git
+	provides = winkel
+	conflicts = winkel
+	source = winkel::git+https://github.com/DouglasdeMoura/winkel.git
 	sha256sums = SKIP
 
-pkgname = omarchy-metronome-git
+pkgname = winkel-git

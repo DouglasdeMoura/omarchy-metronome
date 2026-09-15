@@ -20,27 +20,35 @@ fn config_base() -> Option<PathBuf> {
 }
 
 pub fn state_path() -> Option<PathBuf> {
-    config_base().map(|base| base.join("metronome").join("state.json"))
+    config_base().map(|base| base.join("winkel").join("state.json"))
 }
 
-// Before the app was renamed its state lived in ~/.config/pulse, a directory
-// it shared with PulseAudio's cookie. A first run with no state of its own
-// reads the old file once; the next save writes the new place, and nothing
-// in the old directory is touched.
-fn legacy_state_path() -> Option<PathBuf> {
-    config_base().map(|base| base.join("pulse").join("state.json"))
+// The app was called Metronome, and before that Pulse, and its state lived in
+// ~/.config/metronome and ~/.config/pulse; the second is also PulseAudio's
+// directory, which holds its cookie. A first run with no state of its own
+// reads the newest of those once; the next save writes the new place, and
+// nothing in the old directories is touched.
+fn legacy_state_paths() -> Vec<PathBuf> {
+    config_base()
+        .map(|base| {
+            ["metronome", "pulse"]
+                .iter()
+                .map(|name| base.join(name).join("state.json"))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub fn load() -> Params {
     match state_path() {
-        Some(path) => load_preferring(&path, legacy_state_path().as_deref()),
+        Some(path) => load_preferring(&path, &legacy_state_paths()),
         None => Params::default(),
     }
 }
 
-fn load_preferring(path: &std::path::Path, legacy: Option<&std::path::Path>) -> Params {
+fn load_preferring(path: &std::path::Path, legacy: &[PathBuf]) -> Params {
     if !path.is_file() {
-        if let Some(old) = legacy.filter(|p| p.is_file()) {
+        if let Some(old) = legacy.iter().find(|p| p.is_file()) {
             return load_from(old);
         }
     }
@@ -92,9 +100,9 @@ mod tests {
 
     #[test]
     fn load_and_save_round_trip_through_a_temp_config() {
-        let dir = std::env::temp_dir().join(format!("metronome-state-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("winkel-state-test-{}", std::process::id()));
         std::fs::remove_dir_all(&dir).ok();
-        let path = dir.join("metronome/state.json");
+        let path = dir.join("winkel/state.json");
 
         let p = Params {
             bpm: 97.0,
@@ -112,30 +120,37 @@ mod tests {
         assert_eq!(loaded, p);
 
         // A corrupt file falls back to defaults instead of taking the backend down.
-        std::fs::write(dir.join("metronome").join("state.json"), "{not json").unwrap();
+        std::fs::write(dir.join("winkel").join("state.json"), "{not json").unwrap();
         assert_eq!(load_from(&path), Params::default());
 
         std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
-    fn a_first_run_reads_the_state_from_before_the_rename() {
-        let dir = std::env::temp_dir().join(format!("metronome-legacy-test-{}", std::process::id()));
+    fn a_first_run_reads_the_state_from_before_the_renames() {
+        let dir = std::env::temp_dir().join(format!("winkel-legacy-test-{}", std::process::id()));
         std::fs::remove_dir_all(&dir).ok();
-        let new = dir.join("metronome/state.json");
-        let old = dir.join("pulse/state.json");
+        let new = dir.join("winkel/state.json");
+        let metronome = dir.join("metronome/state.json");
+        let pulse = dir.join("pulse/state.json");
+        let legacy = [metronome.clone(), pulse.clone()];
 
-        let mut before = Params::default();
-        before.bpm = 97.0;
-        save_to(&before, &old).unwrap();
-        assert_eq!(load_preferring(&new, Some(&old)), before, "no state of its own: the old one");
+        let mut oldest = Params::default();
+        oldest.bpm = 91.0;
+        save_to(&oldest, &pulse).unwrap();
+        assert_eq!(load_preferring(&new, &legacy), oldest, "only the oldest name: that one");
+
+        let mut older = Params::default();
+        older.bpm = 97.0;
+        save_to(&older, &metronome).unwrap();
+        assert_eq!(load_preferring(&new, &legacy), older, "the newer old name wins");
         assert!(!new.exists(), "reading never writes");
 
         let mut after = Params::default();
         after.bpm = 133.0;
         save_to(&after, &new).unwrap();
-        assert_eq!(load_preferring(&new, Some(&old)), after, "its own state wins");
-        assert!(old.is_file(), "the old file is left alone");
+        assert_eq!(load_preferring(&new, &legacy), after, "its own state wins");
+        assert!(metronome.is_file() && pulse.is_file(), "the old files are left alone");
 
         std::fs::remove_dir_all(&dir).ok();
     }

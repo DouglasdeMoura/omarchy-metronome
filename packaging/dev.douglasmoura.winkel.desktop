@@ -1,10 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=Metronome
+Name=Winkel
+GenericName=Metronome
 Comment=A metronome that follows your Omarchy theme
-Exec=omarchy-metronome
-Icon=dev.douglasmoura.metronome
+Exec=winkel
+Icon=dev.douglasmoura.winkel
 Terminal=false
 Categories=AudioVideo;Audio;
 Keywords=metronome;tempo;music;practice;omarchy;
-StartupWMClass=dev.douglasmoura.metronome
+StartupWMClass=dev.douglasmoura.winkel

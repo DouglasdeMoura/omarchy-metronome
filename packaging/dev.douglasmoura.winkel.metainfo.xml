@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>dev.douglasmoura.metronome</id>
+  <id>dev.douglasmoura.winkel</id>
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
-  <name>Metronome</name>
+  <name>Winkel</name>
   <summary>Keep time with a metronome that follows your Omarchy theme</summary>
   <description>
     <p>
@@ -16,13 +16,13 @@
       fully usable from the keyboard, and it is ready for translation.
     </p>
   </description>
-  <launchable type="desktop-id">dev.douglasmoura.metronome.desktop</launchable>
+  <launchable type="desktop-id">dev.douglasmoura.winkel.desktop</launchable>
   <provides>
-    <binary>omarchy-metronome</binary>
+    <binary>winkel</binary>
   </provides>
-  <url type="homepage">https://github.com/DouglasdeMoura/omarchy-metronome</url>
-  <url type="bugtracker">https://github.com/DouglasdeMoura/omarchy-metronome/issues</url>
-  <url type="vcs-browser">https://github.com/DouglasdeMoura/omarchy-metronome</url>
+  <url type="homepage">https://github.com/DouglasdeMoura/winkel</url>
+  <url type="bugtracker">https://github.com/DouglasdeMoura/winkel/issues</url>
+  <url type="vcs-browser">https://github.com/DouglasdeMoura/winkel</url>
   <developer id="dev.douglasmoura">
     <name>Douglas Moura</name>
   </developer>
