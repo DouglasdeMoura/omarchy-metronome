@@ -19,13 +19,15 @@ Item {
 
     // --- the state the backend mirrors ---
     property bool running: false
-    property real bpm: 120
+    // The backend's first state line replaces these; they match its
+    // defaults so nothing flickers before it lands.
+    property real bpm: 80
     property int beats: 4
     property int denominator: 4
     // Per-beat voice: 0 silent, 1 low tone, 2 medium tone, 3 high tone.
     // Sixteen slots, one per beat position, so a pattern survives a change of
     // meter.
-    property var voices: [3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    property var voices: [3, 1, 1, 1, 2, 2, 1, 3, 3, 2, 3, 1, 2, 2, 1, 3]
     property int currentBeat: -1
     // The caption under the controls: a failure the backend or the bridge
     // reported, else the silent-output notice. Bound, so it retranslates.

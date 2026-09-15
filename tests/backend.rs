@@ -55,7 +55,8 @@ fn voices_save_stop_and_quit_work_over_stdio() {
         assert!(line.contains("\"t\":\"beat\""));
     }
     let state = std::fs::read_to_string(dir.join("pulse/state.json")).unwrap();
-    assert!(state.contains("\"voices\":[3,2,1,0,1,1,1,1,1,1,1,1,1,1,1,1]"));
+    // The four sent, then the default slots past them, untouched.
+    assert!(state.contains("\"voices\":[3,2,1,0,2,2,1,3,3,2,3,1,2,2,1,3]"), "{}", state);
     assert!(state.contains("\"denominator\":8"));
     writeln!(input, "{{\"c\":\"quit\"}}").unwrap();
     loop {

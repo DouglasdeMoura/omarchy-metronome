@@ -50,19 +50,23 @@ pub const DENOMINATORS: [u32; 4] = [1, 2, 4, 8];
 impl Default for Params {
     fn default() -> Self {
         Params {
-            bpm: 120.0,
+            // A first launch opens on the setup Pulse was tuned with: 80 in
+            // 4/4, no subdivision, high on the one and low on the rest of
+            // the bar, and a pattern already waiting in the slots past the
+            // fourth beat for a longer meter.
+            bpm: 80.0,
             beats: 4,
             denominator: 4,
             volume: 0.8,
             subdivision: 1,
             subpattern: 1,
             subshape: 1,
-            // The classic metronome: high on the one, low on the rest.
-            voices: {
-                let mut v = [VOICE_LOW; BEATS_MAX as usize];
-                v[0] = VOICE_HIGH;
-                v
-            },
+            voices: [
+                VOICE_HIGH, VOICE_LOW, VOICE_LOW, VOICE_LOW,
+                VOICE_MEDIUM, VOICE_MEDIUM, VOICE_LOW, VOICE_HIGH,
+                VOICE_HIGH, VOICE_MEDIUM, VOICE_HIGH, VOICE_LOW,
+                VOICE_MEDIUM, VOICE_MEDIUM, VOICE_LOW, VOICE_HIGH,
+            ],
         }
     }
 }
@@ -1121,7 +1125,7 @@ mod tests {
         let twelve = Json::obj(vec![("voices", Json::Arr(vec![Json::int(2); 12]))]);
         p.apply_patch(&twelve).unwrap();
         assert_eq!(&p.voices[..12], &[2; 12]);
-        assert_eq!(&p.voices[12..], &[VOICE_LOW; 4]);
+        assert_eq!(&p.voices[12..], &Params::default().voices[12..]);
         let sixteen = Json::obj(vec![("voices", Json::Arr(vec![Json::int(3); 16]))]);
         p.apply_patch(&sixteen).unwrap();
         assert_eq!(p.voices, [3; 16]);
