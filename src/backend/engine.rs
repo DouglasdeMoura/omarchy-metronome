@@ -817,7 +817,7 @@ mod audio {
             let default = device
                 .default_output_config()
                 .map_err(|err| {
-                    eprintln!("metronome: no output configuration ({err})");
+                    eprintln!("omarchy-metronome: no output configuration ({err})");
                 })
                 .ok()?;
             let format = default.sample_format();
@@ -855,9 +855,9 @@ mod audio {
                                 _stream: stream,
                             })
                         }
-                        Err(err) => eprintln!("metronome: output would not start at {rate} Hz ({err})"),
+                        Err(err) => eprintln!("omarchy-metronome: output would not start at {rate} Hz ({err})"),
                     },
-                    Err(err) => eprintln!("metronome: output could not be built at {rate} Hz ({err})"),
+                    Err(err) => eprintln!("omarchy-metronome: output could not be built at {rate} Hz ({err})"),
                 }
             }
             None

@@ -1,0 +1,36 @@
+# Maintainer: Douglas Moura <doug@douglasmoura.com>
+pkgname=omarchy-metronome
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A metronome for Omarchy that follows the live theme (Rust + Quickshell)"
+arch=(x86_64 aarch64)
+url="https://github.com/DouglasdeMoura/omarchy-metronome"
+license=(MIT)
+depends=(quickshell alsa-lib gcc-libs glibc)
+makedepends=(cargo)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc --print host-tuple)"
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  METRONOME_SILENT=1 cargo test --frozen
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  make install PREFIX=/usr DESTDIR="$pkgdir"
+}

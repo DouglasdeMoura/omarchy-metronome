@@ -1,6 +1,6 @@
 # The Metronome protocol
 
-One json object per line, both ways, over the stdio of `metronome --backend`. The
+One json object per line, both ways, over the stdio of `omarchy-metronome --backend`. The
 UI (`ui/Backend.qml`) is the only client; `src/backend/proto.rs` is the only
 interpreter. A line the backend cannot read becomes an `error` event, never a
 silence.

@@ -1,9 +1,16 @@
 [package]
-name = "metronome"
+name = "omarchy-metronome"
 version = "0.1.0"
 edition = "2021"
 description = "A metronome for Omarchy: Rust backend, Quickshell/QML frontend, follows the Omarchy theme"
 rust-version = "1.89"
+license = "MIT"
+authors = ["Douglas Moura <doug@douglasmoura.com>"]
+repository = "https://github.com/DouglasdeMoura/omarchy-metronome"
+homepage = "https://github.com/DouglasdeMoura/omarchy-metronome"
+readme = "README.md"
+keywords = ["metronome", "omarchy", "quickshell", "music", "audio"]
+categories = ["multimedia::audio"]
 
 [dependencies]
 # The one dependency, and the only one Metronome will ever need beyond std: a

@@ -57,15 +57,70 @@ frontend, and a look that follows your Omarchy theme live — change themes with
 | `?` | the keys sheet |
 | `ctrl+q` | quit |
 
-## Running
+## Requirements
+
+Metronome runs on Linux with a graphical session.
+
+| | Needed | Notes |
+| --- | --- | --- |
+| **Quickshell** | yes | The interface runs in Quickshell (`qs`). Arch: `quickshell`. |
+| **ALSA library** | yes | The audio backend's link to the sound system, `alsa-lib`, with PipeWire, PulseAudio or plain ALSA behind it. |
+| **Wayland or X11** | yes | Any desktop; Omarchy's Hyprland is the home turf. |
+| **JetBrainsMono Nerd Font** | recommended | The default font; set `METRONOME_FONT` to use another. |
+| **Omarchy** | optional | Supplies the live theme. Without it Metronome uses its built-in palette. |
+| **Hyprland** | optional | Supplies corner rounding and the reduced-motion setting. |
+
+Building from source also needs Rust 1.89 or newer with cargo, the ALSA
+development headers (included in Arch's `alsa-lib`, `libasound2-dev` on
+Debian and Ubuntu), `pkg-config` and `make`.
+
+## Installing
+
+### Omarchy and Arch Linux (AUR)
 
 ```sh
-cargo build --release  # Rust 1.89 or newer
-./target/release/metronome
+omarchy pkg aur add omarchy-metronome   # on Omarchy
+yay -S omarchy-metronome                # any Arch system with an AUR helper
 ```
 
-A checkout finds its own `ui/` automatically. Launch `metronome`, not `qs`
-directly: the binary tells the window where its backend is.
+Three packages are available: `omarchy-metronome` builds the release from
+source, `omarchy-metronome-bin` installs the prebuilt binary, and
+`omarchy-metronome-git` builds the latest development version.
+
+### Release tarball
+
+Prebuilt binaries for x86_64 and aarch64 are attached to every
+[release](https://github.com/DouglasdeMoura/omarchy-metronome/releases). They
+need Quickshell and the ALSA library installed, but no Rust toolchain:
+
+```sh
+tar xzf omarchy-metronome-0.1.0-x86_64-linux.tar.gz
+cd omarchy-metronome-0.1.0-x86_64-linux
+sudo make install
+```
+
+### From source
+
+```sh
+git clone https://github.com/DouglasdeMoura/omarchy-metronome
+cd omarchy-metronome
+make
+sudo make install                 # to /usr/local; PREFIX=/usr to change it
+```
+
+`sudo make uninstall` removes it again, with the same `PREFIX`.
+
+## Running
+
+Start it from your launcher, or:
+
+```sh
+omarchy-metronome
+```
+
+From a checkout, `./target/release/omarchy-metronome` finds its own `ui/`.
+Launch the binary, not `qs` directly: the binary tells the window where its
+backend is.
 
 The development switches, see `src/paths.rs` and `src/gui.rs`:
 
@@ -76,15 +131,6 @@ The development switches, see `src/paths.rs` and `src/gui.rs`:
 | `METRONOME_SILENT` | run the protocol without audio, for tests and headless boxes |
 | `METRONOME_LANG` | force a language, or `pseudo` / `pseudo-rtl` to test translations |
 | `METRONOME_FONT` | the font family |
-
-## Installing
-
-```sh
-sudo install -Dm755 target/release/metronome /usr/local/bin/metronome
-sudo cp -r ui /usr/local/share/metronome/ui
-sudo cp packaging/metronome.desktop /usr/share/applications/
-sudo cp packaging/metronome.svg /usr/share/icons/hicolor/scalable/apps/
-```
 
 If you want Metronome to open as a small floating window instead of a tile, give
 Hyprland a rule. Omarchy's Hyprland config is Lua; add this to a file in
@@ -99,9 +145,9 @@ o.window("^dev\\.douglasmoura\\.metronome$", { float = true, center = true, size
 Two processes, one app — Flea's shape:
 
 ```
-metronome (CLI)
- └─ exec qs -p ui/shell.qml              the window; METRONOME_BIN tells QML who to call
-     └─ Process: metronome --backend     json lines over stdio, docs/protocol.md
+omarchy-metronome (CLI)
+ └─ exec qs -p ui/shell.qml                      the window; METRONOME_BIN tells QML who to call
+     └─ Process: omarchy-metronome --backend     json lines over stdio, docs/protocol.md
          └─ cpal output stream           the timeline and the clicks
 ```
 
@@ -128,6 +174,10 @@ MIT; see `packaging/ICON-LICENSE`.
 ## Tests
 
 ```sh
+make test           # both suites below
 cargo test          # timeline, protocol process, json, state, translation catalogues
 bash tests/ui.sh    # offscreen Quickshell frontend regression checks
 ```
+
+Releases follow [docs/releasing.md](docs/releasing.md), and changes are
+recorded in [CHANGELOG.md](CHANGELOG.md).

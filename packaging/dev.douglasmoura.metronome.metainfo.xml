@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.douglasmoura.metronome</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Metronome</name>
+  <summary>Keep time with a metronome that follows your Omarchy theme</summary>
+  <description>
+    <p>
+      A metronome for Omarchy with sample-accurate clicks, a time signature
+      editor, per-beat accents, tap tempo and subdivisions shown in musical
+      notation, from eighths and triplets to dotted rhythms and sextuplets.
+    </p>
+    <p>
+      Its colours, type and spacing follow the live Omarchy theme, it is
+      fully usable from the keyboard, and it is ready for translation.
+    </p>
+  </description>
+  <launchable type="desktop-id">dev.douglasmoura.metronome.desktop</launchable>
+  <provides>
+    <binary>omarchy-metronome</binary>
+  </provides>
+  <url type="homepage">https://github.com/DouglasdeMoura/omarchy-metronome</url>
+  <url type="bugtracker">https://github.com/DouglasdeMoura/omarchy-metronome/issues</url>
+  <url type="vcs-browser">https://github.com/DouglasdeMoura/omarchy-metronome</url>
+  <developer id="dev.douglasmoura">
+    <name>Douglas Moura</name>
+  </developer>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+  </categories>
+  <keywords>
+    <keyword>metronome</keyword>
+    <keyword>tempo</keyword>
+    <keyword>rhythm</keyword>
+    <keyword>music</keyword>
+    <keyword>practice</keyword>
+  </keywords>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-09-15"/>
+  </releases>
+</component>

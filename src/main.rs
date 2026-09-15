@@ -9,9 +9,9 @@ mod i18n_check;
 use std::process::exit;
 
 fn usage(message: &str) -> ! {
-    eprintln!("metronome: {}", message);
-    eprintln!("usage: metronome [--backend]");
-    eprintln!("       metronome --version");
+    eprintln!("omarchy-metronome: {}", message);
+    eprintln!("usage: omarchy-metronome [--backend]");
+    eprintln!("       omarchy-metronome --version");
     exit(2)
 }
 
@@ -29,7 +29,7 @@ fn main() {
         usage("help:");
     }
 
-    // metronome --backend is the process the shell spawns; the protocol lives in
+    // omarchy-metronome --backend is the process the shell spawns; the protocol lives in
     // docs/protocol.md and its one interpreter lives in backend/proto.rs.
     if args.len() == 2 && args[1] == "--backend" {
         exit(backend::run::run());

@@ -17,7 +17,7 @@ pub fn exec_qs(ui: &Path) -> i32 {
     }
     // exec() only returns on failure; the reason is elided, never shown raw.
     let _ = cmd.exec();
-    eprintln!("metronome: could not start the shell, qs is not on PATH or failed to run");
+    eprintln!("omarchy-metronome: could not start the shell, qs is not on PATH or failed to run");
     1
 }
 
@@ -26,18 +26,18 @@ pub fn launch() -> i32 {
     // makes ticks fuse and vanish. Answer before a window is spawned so the
     // second launch is a polite no-op, not a broken shell.
     if paths::backend_running() {
-        eprintln!("metronome: Metronome is already running");
+        eprintln!("omarchy-metronome: Metronome is already running");
         return 0;
     }
     if !paths::has_display() {
-        eprintln!("metronome: there is no graphical session to open a window in");
+        eprintln!("omarchy-metronome: there is no graphical session to open a window in");
         return 2;
     }
     match paths::ui_dir() {
         Some(ui) => exec_qs(&ui),
         None => {
             eprintln!(
-                "metronome: the shell config is missing, set METRONOME_UI or install /usr/share/metronome/ui"
+                "omarchy-metronome: the shell config is missing, set METRONOME_UI or install /usr/share/omarchy-metronome/ui"
             );
             2
         }

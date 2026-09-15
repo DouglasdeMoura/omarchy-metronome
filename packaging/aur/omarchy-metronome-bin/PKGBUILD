@@ -1,0 +1,21 @@
+# Maintainer: Douglas Moura <doug@douglasmoura.com>
+pkgname=omarchy-metronome-bin
+_pkgname=omarchy-metronome
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A metronome for Omarchy that follows the live theme (prebuilt binary)"
+arch=(x86_64 aarch64)
+url="https://github.com/DouglasdeMoura/omarchy-metronome"
+license=(MIT)
+depends=(quickshell alsa-lib gcc-libs glibc)
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+source_x86_64=("$url/releases/download/v$pkgver/$_pkgname-$pkgver-x86_64-linux.tar.gz")
+source_aarch64=("$url/releases/download/v$pkgver/$_pkgname-$pkgver-aarch64-linux.tar.gz")
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+package() {
+  cd "$_pkgname-$pkgver-$CARCH-linux"
+  make install PREFIX=/usr DESTDIR="$pkgdir"
+}

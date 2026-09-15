@@ -1,0 +1,17 @@
+pkgbase = omarchy-metronome
+	pkgdesc = A metronome for Omarchy that follows the live theme (Rust + Quickshell)
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/DouglasdeMoura/omarchy-metronome
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	makedepends = cargo
+	depends = quickshell
+	depends = alsa-lib
+	depends = gcc-libs
+	depends = glibc
+	source = omarchy-metronome-0.1.0.tar.gz::https://github.com/DouglasdeMoura/omarchy-metronome/archive/refs/tags/v0.1.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = omarchy-metronome

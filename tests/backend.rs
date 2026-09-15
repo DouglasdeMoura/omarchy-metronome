@@ -7,7 +7,7 @@ use std::time::Duration;
 fn voices_save_stop_and_quit_work_over_stdio() {
     let dir = std::env::temp_dir().join(format!("metronome-protocol-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_metronome"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_omarchy-metronome"))
         .arg("--backend")
         .env("METRONOME_SILENT", "1")
         .env("XDG_RUNTIME_DIR", &dir)

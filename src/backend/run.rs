@@ -3,7 +3,7 @@ use super::proto::{self, Command};
 use std::io::BufRead;
 use std::os::unix::fs::OpenOptionsExt;
 
-// metronome --backend: one json line per request on stdin, one json line per event
+// omarchy-metronome --backend: one json line per request on stdin, one json line per event
 // on stdout. The process lives exactly as long as its stdin does, so a dead
 // shell never leaves an orphan holding the audio device.
 
@@ -82,7 +82,7 @@ pub fn run() -> i32 {
         Err((code, msg)) => {
             // The fresh shell gets the reason on the wire, where its error
             // caption shows it, and on stderr for the logs.
-            eprintln!("metronome: {}", msg);
+            eprintln!("omarchy-metronome: {}", msg);
             let _ = proto::emit(&proto::ev::error(code, &msg, &msg));
             return 2;
         }

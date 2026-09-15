@@ -7,22 +7,29 @@ frontend, and a look that follows the live Omarchy theme.
 ## Commands
 
 ```sh
-cargo build --release          # the binary also finds ./ui relative to a checkout
-cargo test                     # timeline, protocol, json, state, catalogues — all offline
-bash tests/ui.sh               # the QML frontend, offscreen
-./target/release/metronome     # launch the app (needs a wayland session + qs)
+cargo build --release                  # the binary also finds ./ui relative to a checkout
+cargo test                             # timeline, protocol, json, state, catalogues — all offline
+bash tests/ui.sh                       # the QML frontend, offscreen
+make test                              # both
+./target/release/omarchy-metronome     # launch the app (needs a wayland session + qs)
 ```
 
 Headless / CI:
 
 ```sh
-METRONOME_SILENT=1 ./target/release/metronome --backend < lines-of-json
+METRONOME_SILENT=1 ./target/release/omarchy-metronome --backend < lines-of-json
 ```
 
-Launch `target/release/metronome`, never `qs -p ui/shell.qml` and never a stale
-`target/release/pulse` from before the rename: only the current binary sets
-`METRONOME_BIN`, and without it the window reports that the backend could not
-be started.
+Launch `target/release/omarchy-metronome`, never `qs -p ui/shell.qml` and never
+a stale `target/release/pulse` or `target/release/metronome` from before the
+renames: only the current binary sets `METRONOME_BIN`, and without it the
+window reports that the backend could not be started.
+
+The installed name is `omarchy-metronome` because Arch's `extra` repository
+already ships GNOME Metronome as `metronome`, with `/usr/bin/metronome` and
+`/usr/share/metronome`. The window still says Metronome, the app id is
+`dev.douglasmoura.metronome`, and the settings and `METRONOME_*` variables keep
+the short name.
 
 ## The shape
 
@@ -30,7 +37,7 @@ be started.
 - `src/gui.rs` — execs `qs -p <ui>/shell.qml`, passing `METRONOME_BIN` so the QML
   spawns this exact binary as its backend.
 - `src/paths.rs` — finds the ui dir: `METRONOME_UI`, beside the binary, up the
-  tree to a checkout or a prefixed install, then `/usr/share/metronome/ui`.
+  tree to a checkout or a prefixed install, then `/usr/share/omarchy-metronome/ui`.
 - `src/backend/run.rs` — the stdin loop and the single-instance lock in
   `$XDG_RUNTIME_DIR`.
 - `src/backend/proto.rs` — the one interpreter of docs/protocol.md; the wire
@@ -67,6 +74,13 @@ be started.
   screen is `I18n.tr(key)`. See docs/i18n.md.
 - `ui/Backend.qml` — the process bridge: queue before spawn, SplitParser on
   stdout, one signal per protocol event.
+- `Makefile` — build, test, install and uninstall with `PREFIX` and `DESTDIR`,
+  and `dist` for a release tarball whose `make install` needs no cargo.
+- `packaging/` — the desktop entry, icon and AppStream metainfo, all named
+  after the app id, and `aur/` with the source, `-bin` and `-git` packages.
+- `.github/workflows/` — `ci.yml` runs both test suites in an Arch container;
+  `release.yml` builds x86_64 and aarch64 tarballs on a `v*` tag and publishes
+  the release. See docs/releasing.md.
 
 ## Rules this repo keeps
 
@@ -82,6 +96,9 @@ be started.
 - The subdivision's sound is `subpattern`; `subshape` is only its spelling,
   carried for the shell and never read by the engine. The backend keeps the
   two coherent: a figure starts at every onset and at the beat.
+- A version lives in five places that move together: `Cargo.toml`, the
+  metainfo's `<release>`, `CHANGELOG.md`, and `pkgver` in the source and
+  `-bin` PKGBUILDs. docs/releasing.md walks the order.
 - Every user-visible string is a key in `ui/i18n/en.json`, shown through
   `I18n.tr`; no literal words in QML. A new backend error gets a code in
   proto.rs's `ERROR_CODES` and an `error.wire.<code>` message. cargo test

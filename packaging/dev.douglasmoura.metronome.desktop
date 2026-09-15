@@ -2,8 +2,8 @@
 Type=Application
 Name=Metronome
 Comment=A metronome that follows your Omarchy theme
-Exec=metronome
-Icon=metronome
+Exec=omarchy-metronome
+Icon=dev.douglasmoura.metronome
 Terminal=false
 Categories=AudioVideo;Audio;
 Keywords=metronome;tempo;music;practice;omarchy;

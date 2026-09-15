@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install toolchain, Quickshell and test tools
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git rust quickshell qt6-svg alsa-lib ripgrep ttf-jetbrains-mono-nerd
+      - uses: actions/checkout@v4
+      - name: Rust tests
+        run: cargo test --locked
+      - name: QML frontend tests
+        run: bash tests/ui.sh

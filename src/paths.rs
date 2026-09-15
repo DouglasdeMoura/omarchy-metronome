@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 // Where the QML lives: METRONOME_UI first, so a checkout always wins for its own
 // runs; then beside the binary; then a capped walk up the tree, which finds
-// both the cargo checkout (`target/release/metronome` → `ui/` at the repo root)
-// and a prefixed install (`/usr/local/bin/metronome` → `/usr/local/share/metronome/ui`);
+// both the cargo checkout (`target/release/omarchy-metronome` → `ui/` at the repo root)
+// and a prefixed install (`/usr/local/bin/omarchy-metronome` → `/usr/local/share/omarchy-metronome/ui`);
 // then the system path pacman owns.
 pub fn ui_dir() -> Option<PathBuf> {
     if let Some(v) = std::env::var_os("METRONOME_UI") {
@@ -21,7 +21,7 @@ pub fn ui_dir() -> Option<PathBuf> {
         if repo.join("shell.qml").is_file() {
             return Some(repo);
         }
-        let installed = dir.join("share/metronome/ui");
+        let installed = dir.join("share/omarchy-metronome/ui");
         if installed.join("shell.qml").is_file() {
             return Some(installed);
         }
@@ -29,7 +29,7 @@ pub fn ui_dir() -> Option<PathBuf> {
             break;
         }
     }
-    let system = PathBuf::from("/usr/share/metronome/ui");
+    let system = PathBuf::from("/usr/share/omarchy-metronome/ui");
     if system.join("shell.qml").is_file() {
         return Some(system);
     }
