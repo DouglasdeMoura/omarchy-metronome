@@ -248,7 +248,6 @@ Item {
 
     function rebuildMainRing() {
         var r = []
-        r.push({ item: chrome.closeItem, activate: function () { root.closeRequested() } })
         for (var i = 0; i < root.beats; i++) {
             (function (idx) {
                 var it = metersRepeater.itemAt(idx)
@@ -449,19 +448,11 @@ Item {
     }
 
     // --- layout ---
-    // Two fixed rails: the chrome on top and the instrument itself centred
-    // in what is left over, so a tiled window and a floating one both read
-    // as composed, not stretched.
-    ChromeBar {
-        id: chrome
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        onClosed: root.closeRequested()
-    }
-
+    // No chrome of its own: the desktop owns the window's frame and its
+    // close, and the instrument is centred in the whole window, so a tiled
+    // window and a floating one both read as composed, not stretched.
     Item {
-        anchors.top: chrome.bottom
+        anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right

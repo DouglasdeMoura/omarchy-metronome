@@ -3,7 +3,6 @@ singleton Theme 1.0 Theme.qml
 singleton I18n 1.0 I18n.qml
 Backend 1.0 Backend.qml
 Main 1.0 Main.qml
-ChromeBar 1.0 ChromeBar.qml
 WheelColumn 1.0 WheelColumn.qml
 ChromeButton 1.0 ChromeButton.qml
 DialogButton 1.0 DialogButton.qml
