@@ -1206,33 +1206,57 @@ Item {
                 }
 
                 // The draft, drawn and named, so a figure is never the only
-                // word and a custom cell is seen before it is committed.
-                Row {
-                    anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.rowPaddingX
-                    topPadding: Theme.spacing.gap
-                    bottomPadding: Theme.space(12)
-                    spacing: Theme.spacing.gap
+                // word and a custom cell is seen before it is committed. The
+                // row holds the tallest thing it can show, a tuplet's figure
+                // or two lines of name, so the card never changes height as
+                // the draft does.
+                Item {
+                    id: draftRow
+                    width: parent.width
+                    height: Theme.spacing.gap + Theme.space(12)
+                          + Math.max(tallestFigure.implicitHeight, 2 * draftLine.height)
 
+                    // Measures only: a sextuplet's figure, number and all.
                     NoteFigure {
-                        anchors.verticalCenter: parent.verticalCenter
-                        beatValue: root.denominator
-                        division: subPanel.draftDivision
-                        mask: subPanel.draftMask
-                        shape: subPanel.draftCell.shape
-                        ink: Theme.color.accent
+                        id: tallestFigure
+                        visible: false
+                        division: 6
+                        mask: 63
                     }
 
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: subPanel.width - 2 * Theme.spacing.rowPaddingX - Theme.golden(4) - Theme.spacing.gap
-                        text: subPanel.draftName
-                        color: Theme.color.foreground
+                    FontMetrics {
+                        id: draftLine
                         font.family: Theme.font.family
                         font.pixelSize: Theme.font.bodySmall
-                        wrapMode: Text.WordWrap
-                        maximumLineCount: 2
-                        elide: Text.ElideRight
+                    }
+
+                    Row {
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacing.rowPaddingX
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenterOffset: (Theme.spacing.gap - Theme.space(12)) / 2
+                        spacing: Theme.spacing.gap
+
+                        NoteFigure {
+                            anchors.verticalCenter: parent.verticalCenter
+                            beatValue: root.denominator
+                            division: subPanel.draftDivision
+                            mask: subPanel.draftMask
+                            shape: subPanel.draftCell.shape
+                            ink: Theme.color.accent
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: subPanel.width - 2 * Theme.spacing.rowPaddingX - Theme.golden(4) - Theme.spacing.gap
+                            text: subPanel.draftName
+                            color: Theme.color.foreground
+                            font.family: Theme.font.family
+                            font.pixelSize: Theme.font.bodySmall
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
+                        }
                     }
                 }
 
