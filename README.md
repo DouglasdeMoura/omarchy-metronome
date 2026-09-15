@@ -62,7 +62,7 @@ If you want Metronome to open as a small floating window instead of a tile, give
 Hyprland a rule (Omarchy's `~/.config/hypr/` user conf or a drop-in):
 
 ```ini
-windowrule = float, class:^(com\.douglasdemoura\.metronome)$
+windowrule = float, class:^(dev\.douglasmoura\.metronome)$
 ```
 
 ## Architecture

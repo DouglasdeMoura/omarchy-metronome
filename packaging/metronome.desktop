@@ -8,4 +8,4 @@ Icon=metronome
 Terminal=false
 Categories=AudioVideo;Audio;Utility;
 Keywords=metronome;tempo;music;practice;omarchy;
-StartupWMClass=com.douglasdemoura.metronome
+StartupWMClass=dev.douglasmoura.metronome

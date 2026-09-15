@@ -1,4 +1,4 @@
-//@ pragma AppId com.douglasdemoura.metronome
+//@ pragma AppId dev.douglasmoura.metronome
 //@ pragma ShellId metronome
 //@ pragma CacheDir $BASE/metronome
 
