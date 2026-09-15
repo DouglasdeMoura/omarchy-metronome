@@ -2,12 +2,14 @@
   <!-- Metronome's app icon. The metronome shape is Phosphor's "metronome"
        (fill weight), MIT, see ICON-LICENSE; the tile, colours, face,
        graduations, pendulum and base shading are this project's.
-       Every colour is from Tailwind's palette: white, black, stone-100,
-       stone-200, stone-400, stone-500, red-400, red-600 and red-800. -->
+       Every colour is from Tailwind's palette: sky-100 and sky-300 for the
+       tile, red-400, red-600 and red-800 for the body, stone-100 for the
+       face, stone-500 for the graduations, stone-200 and stone-400 for the
+       pendulum. -->
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#e7e5e4"/>
+      <stop offset="0" stop-color="#e0f2fe"/>
+      <stop offset="1" stop-color="#7dd3fc"/>
     </linearGradient>
     <!-- A squircle: the superellipse |x|^5 + |y|^5 = 1, whose corners curve
          continuously instead of joining a straight edge to a quarter circle. -->
@@ -27,8 +29,6 @@
   </defs>
 
   <use href="#squircle" fill="url(#tile)"/>
-  <!-- a faint edge, so the light tile holds its shape on a light desktop -->
-  <path d="M59.50,32.00 L59.49,39.53 L59.47,41.94 L59.42,43.68 L59.36,45.09 L59.29,46.30 L59.19,47.37 L59.08,48.32 L58.95,49.19 L58.81,49.99 L58.64,50.73 L58.46,51.41 L58.26,52.05 L58.04,52.65 L57.80,53.21 L57.54,53.74 L57.26,54.23 L56.97,54.70 L56.65,55.14 L56.30,55.55 L55.94,55.94 L55.55,56.30 L55.14,56.65 L54.70,56.97 L54.23,57.26 L53.74,57.54 L53.21,57.80 L52.65,58.04 L52.05,58.26 L51.41,58.46 L50.73,58.64 L49.99,58.81 L49.19,58.95 L48.32,59.08 L47.37,59.19 L46.30,59.29 L45.09,59.36 L43.68,59.42 L41.94,59.47 L39.53,59.49 L32.00,59.50 L24.47,59.49 L22.06,59.47 L20.32,59.42 L18.91,59.36 L17.70,59.29 L16.63,59.19 L15.68,59.08 L14.81,58.95 L14.01,58.81 L13.27,58.64 L12.59,58.46 L11.95,58.26 L11.35,58.04 L10.79,57.80 L10.26,57.54 L9.77,57.26 L9.30,56.97 L8.86,56.65 L8.45,56.30 L8.06,55.94 L7.70,55.55 L7.35,55.14 L7.03,54.70 L6.74,54.23 L6.46,53.74 L6.20,53.21 L5.96,52.65 L5.74,52.05 L5.54,51.41 L5.36,50.73 L5.19,49.99 L5.05,49.19 L4.92,48.32 L4.81,47.37 L4.71,46.30 L4.64,45.09 L4.58,43.68 L4.53,41.94 L4.51,39.53 L4.50,32.00 L4.51,24.47 L4.53,22.06 L4.58,20.32 L4.64,18.91 L4.71,17.70 L4.81,16.63 L4.92,15.68 L5.05,14.81 L5.19,14.01 L5.36,13.27 L5.54,12.59 L5.74,11.95 L5.96,11.35 L6.20,10.79 L6.46,10.26 L6.74,9.77 L7.03,9.30 L7.35,8.86 L7.70,8.45 L8.06,8.06 L8.45,7.70 L8.86,7.35 L9.30,7.03 L9.77,6.74 L10.26,6.46 L10.79,6.20 L11.35,5.96 L11.95,5.74 L12.59,5.54 L13.27,5.36 L14.01,5.19 L14.81,5.05 L15.68,4.92 L16.63,4.81 L17.70,4.71 L18.91,4.64 L20.32,4.58 L22.06,4.53 L24.47,4.51 L32.00,4.50 L39.53,4.51 L41.94,4.53 L43.68,4.58 L45.09,4.64 L46.30,4.71 L47.37,4.81 L48.32,4.92 L49.19,5.05 L49.99,5.19 L50.73,5.36 L51.41,5.54 L52.05,5.74 L52.65,5.96 L53.21,6.20 L53.74,6.46 L54.23,6.74 L54.70,7.03 L55.14,7.35 L55.55,7.70 L55.94,8.06 L56.30,8.45 L56.65,8.86 L56.97,9.30 L57.26,9.77 L57.54,10.26 L57.80,10.79 L58.04,11.35 L58.26,11.95 L58.46,12.59 L58.64,13.27 L58.81,14.01 L58.95,14.81 L59.08,15.68 L59.19,16.63 L59.29,17.70 L59.36,18.91 L59.42,20.32 L59.47,22.06 L59.49,24.47 Z" fill="none" stroke="#000000" stroke-opacity="0.14"/>
 
   <g transform="translate(32 33.5) scale(0.2) translate(-128 -128)">
     <!-- the face behind the window -->
