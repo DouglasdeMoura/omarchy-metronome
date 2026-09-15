@@ -3,11 +3,11 @@ use super::proto::{self, Command};
 use std::io::BufRead;
 use std::os::unix::fs::OpenOptionsExt;
 
-// pulse --backend: one json line per request on stdin, one json line per event
+// metronome --backend: one json line per request on stdin, one json line per event
 // on stdout. The process lives exactly as long as its stdin does, so a dead
 // shell never leaves an orphan holding the audio device.
 
-// One Pulse at a time: two metronomes playing the same bar a beat-length
+// One Metronome at a time: two metronomes playing the same bar a beat-length
 // apart fuse and mask each other's clicks, and the player hears ticks
 // vanish at random positions. The lock file is held for the backend's
 // whole life; flock releases it even on a crash, so it never goes stale.
@@ -25,8 +25,8 @@ pub fn lock_path() -> std::path::PathBuf {
             })
         });
     let name = match uid {
-        Some(id) => format!("pulse-{}.lock", id),
-        None => "pulse.lock".to_string(),
+        Some(id) => format!("metronome-{}.lock", id),
+        None => "metronome.lock".to_string(),
     };
     match std::env::var_os("XDG_RUNTIME_DIR") {
         Some(v) if !v.is_empty() => std::path::PathBuf::from(v).join(name),
@@ -34,7 +34,7 @@ pub fn lock_path() -> std::path::PathBuf {
     }
 }
 
-// Try to become the one Pulse. Ok(file) holds the lock for the process's
+// Try to become the one Metronome. Ok(file) holds the lock for the process's
 // life; Err names the failure's wire code and says why.
 pub fn acquire_instance_lock() -> Result<std::fs::File, (&'static str, String)> {
     let path = lock_path();
@@ -49,7 +49,7 @@ pub fn acquire_instance_lock() -> Result<std::fs::File, (&'static str, String)> 
     file.try_lock().map(|()| file).map_err(|err| match err {
         std::fs::TryLockError::WouldBlock => (
             "already_running",
-            format!("another Pulse is already running ({})", path.display()),
+            format!("Metronome is already running ({})", path.display()),
         ),
         std::fs::TryLockError::Error(err) => (
             "lock_failed",
@@ -82,15 +82,15 @@ pub fn run() -> i32 {
         Err((code, msg)) => {
             // The fresh shell gets the reason on the wire, where its error
             // caption shows it, and on stderr for the logs.
-            eprintln!("pulse: {}", msg);
+            eprintln!("metronome: {}", msg);
             let _ = proto::emit(&proto::ev::error(code, &msg, &msg));
             return 2;
         }
     };
 
-    // PULSE_SILENT forces the silent clock, so a headless box or a test can
+    // METRONOME_SILENT forces the silent clock, so a headless box or a test can
     // exercise the whole protocol without an audio device in the room.
-    let silent_forced = std::env::var_os("PULSE_SILENT").is_some_and(|v| !v.is_empty());
+    let silent_forced = std::env::var_os("METRONOME_SILENT").is_some_and(|v| !v.is_empty());
     let initial = super::state::load();
     let handle = engine::launch(initial, silent_forced);
 

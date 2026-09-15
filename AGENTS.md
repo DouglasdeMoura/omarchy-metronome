@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Notes for working on Pulse — a metronome for Omarchy in Flea's shape:
+Notes for working on Metronome, an Omarchy app in Flea's shape:
 a std-only Rust backend speaking json lines over stdio, a Quickshell/QML
 frontend, and a look that follows the live Omarchy theme.
 
@@ -9,20 +9,20 @@ frontend, and a look that follows the live Omarchy theme.
 ```sh
 cargo build --release        # the binary also finds ./ui relative to a checkout
 cargo test                   # timeline, protocol, json, state — all offline
-./target/release/pulse       # launch the app (needs a wayland session + qs)
+./target/release/metronome       # launch the app (needs a wayland session + qs)
 ```
 
 Headless / CI:
 
 ```sh
-PULSE_SILENT=1 ./target/release/pulse --backend < lines-of-json
+METRONOME_SILENT=1 ./target/release/metronome --backend < lines-of-json
 ```
 
 ## The shape
 
 - `src/main.rs` — `--backend`, `--version`, anything else is a window.
-- `src/gui.rs` — execs `qs -p <ui>/shell.qml`, passing `PULSE_BIN` so the QML
-  spawns this exact binary as its backend. `PULSE_UI` overrides the ui dir.
+- `src/gui.rs` — execs `qs -p <ui>/shell.qml`, passing `METRONOME_BIN` so the QML
+  spawns this exact binary as its backend. `METRONOME_UI` overrides the ui dir.
 - `src/backend/proto.rs` — the one interpreter of docs/protocol.md; the wire
   has exactly one author per message.
 - `src/backend/engine.rs` — the metronome. The audio callback owns a

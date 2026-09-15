@@ -117,8 +117,8 @@ Item {
 
     Process {
         id: child
-        // PULSE_BIN is the dev seam, the way gui.rs hands itself over.
-        command: [Quickshell.env("PULSE_BIN") || "pulse", "--backend"]
+        // METRONOME_BIN is the dev seam, the way gui.rs hands itself over.
+        command: [Quickshell.env("METRONOME_BIN") || "metronome", "--backend"]
         running: true
         stdinEnabled: true
 

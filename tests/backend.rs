@@ -5,11 +5,11 @@ use std::time::Duration;
 
 #[test]
 fn voices_save_stop_and_quit_work_over_stdio() {
-    let dir = std::env::temp_dir().join(format!("pulse-protocol-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("metronome-protocol-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_pulse"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_metronome"))
         .arg("--backend")
-        .env("PULSE_SILENT", "1")
+        .env("METRONOME_SILENT", "1")
         .env("XDG_RUNTIME_DIR", &dir)
         .env("XDG_CONFIG_HOME", &dir)
         .stdin(Stdio::piped())
@@ -54,7 +54,7 @@ fn voices_save_stop_and_quit_work_over_stdio() {
         }
         assert!(line.contains("\"t\":\"beat\""));
     }
-    let state = std::fs::read_to_string(dir.join("pulse/state.json")).unwrap();
+    let state = std::fs::read_to_string(dir.join("metronome/state.json")).unwrap();
     // The four sent, then the default slots past them, untouched.
     assert!(state.contains("\"voices\":[3,2,1,0,2,2,1,3,3,2,3,1,2,2,1,3]"), "{}", state);
     assert!(state.contains("\"denominator\":8"));

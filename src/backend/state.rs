@@ -6,22 +6,45 @@ use std::path::PathBuf;
 // The backend owns it, like Flea's ui.json, because the wire already speaks
 // json and the save path then costs one atomic rename.
 
-pub fn state_path() -> Option<PathBuf> {
-    let base = match std::env::var_os("XDG_CONFIG_HOME") {
-        Some(v) if !v.is_empty() => PathBuf::from(v),
+fn config_base() -> Option<PathBuf> {
+    match std::env::var_os("XDG_CONFIG_HOME") {
+        Some(v) if !v.is_empty() => Some(PathBuf::from(v)),
         _ => {
             let home = std::env::var_os("HOME")?;
             if home.is_empty() {
                 return None;
             }
-            PathBuf::from(home).join(".config")
+            Some(PathBuf::from(home).join(".config"))
         }
-    };
-    Some(base.join("pulse").join("state.json"))
+    }
+}
+
+pub fn state_path() -> Option<PathBuf> {
+    config_base().map(|base| base.join("metronome").join("state.json"))
+}
+
+// Before the app was renamed its state lived in ~/.config/pulse, a directory
+// it shared with PulseAudio's cookie. A first run with no state of its own
+// reads the old file once; the next save writes the new place, and nothing
+// in the old directory is touched.
+fn legacy_state_path() -> Option<PathBuf> {
+    config_base().map(|base| base.join("pulse").join("state.json"))
 }
 
 pub fn load() -> Params {
-    state_path().map_or_else(Params::default, |path| load_from(&path))
+    match state_path() {
+        Some(path) => load_preferring(&path, legacy_state_path().as_deref()),
+        None => Params::default(),
+    }
+}
+
+fn load_preferring(path: &std::path::Path, legacy: Option<&std::path::Path>) -> Params {
+    if !path.is_file() {
+        if let Some(old) = legacy.filter(|p| p.is_file()) {
+            return load_from(old);
+        }
+    }
+    load_from(path)
 }
 
 fn load_from(path: &std::path::Path) -> Params {
@@ -35,7 +58,7 @@ fn load_from(path: &std::path::Path) -> Params {
             // A corrupt state file is a fresh start, said once on stderr where
             // a developer looks, never a reason to refuse to run.
             eprintln!(
-                "pulse: {} was not read ({}), starting from defaults",
+                "metronome: {} was not read ({}), starting from defaults",
                 path.display(),
                 e
             );
@@ -69,9 +92,9 @@ mod tests {
 
     #[test]
     fn load_and_save_round_trip_through_a_temp_config() {
-        let dir = std::env::temp_dir().join(format!("pulse-state-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("metronome-state-test-{}", std::process::id()));
         std::fs::remove_dir_all(&dir).ok();
-        let path = dir.join("pulse/state.json");
+        let path = dir.join("metronome/state.json");
 
         let p = Params {
             bpm: 97.0,
@@ -89,8 +112,30 @@ mod tests {
         assert_eq!(loaded, p);
 
         // A corrupt file falls back to defaults instead of taking the backend down.
-        std::fs::write(dir.join("pulse").join("state.json"), "{not json").unwrap();
+        std::fs::write(dir.join("metronome").join("state.json"), "{not json").unwrap();
         assert_eq!(load_from(&path), Params::default());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn a_first_run_reads_the_state_from_before_the_rename() {
+        let dir = std::env::temp_dir().join(format!("metronome-legacy-test-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        let new = dir.join("metronome/state.json");
+        let old = dir.join("pulse/state.json");
+
+        let mut before = Params::default();
+        before.bpm = 97.0;
+        save_to(&before, &old).unwrap();
+        assert_eq!(load_preferring(&new, Some(&old)), before, "no state of its own: the old one");
+        assert!(!new.exists(), "reading never writes");
+
+        let mut after = Params::default();
+        after.bpm = 133.0;
+        save_to(&after, &new).unwrap();
+        assert_eq!(load_preferring(&new, Some(&old)), after, "its own state wins");
+        assert!(old.is_file(), "the old file is left alone");
 
         std::fs::remove_dir_all(&dir).ok();
     }

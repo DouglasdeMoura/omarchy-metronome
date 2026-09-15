@@ -1,7 +1,7 @@
 import QtQuick
 import "Rhythm.js" as Rhythm
 
-// Pulse's one screen. Everything musical lives here: the tempo marking, the
+// Metronome's one screen. Everything musical lives here: the tempo marking, the
 // ring with the beat in its middle, the transport, the meter. The backend
 // owns time; this file only draws what its events say and pushes what its
 // controls move.

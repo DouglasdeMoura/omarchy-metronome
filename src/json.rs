@@ -1,6 +1,6 @@
 // The wire format is one JSON object per line, both ways. serde would buy a
 // parse for types this protocol never carries, at the cost of a dependency
-// tree the backend does not want; this module is the whole of what Pulse needs.
+// tree the backend does not want; this module is the whole of what Metronome needs.
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Json {

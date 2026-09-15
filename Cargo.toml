@@ -1,12 +1,12 @@
 [package]
-name = "pulse"
+name = "metronome"
 version = "0.1.0"
 edition = "2021"
 description = "A metronome for Omarchy: Rust backend, Quickshell/QML frontend, follows the Omarchy theme"
 rust-version = "1.89"
 
 [dependencies]
-# The one dependency, and the only one Pulse will ever need beyond std: a
+# The one dependency, and the only one Metronome will ever need beyond std: a
 # metronome is audio first, and cpal is what puts the click at an exact sample
 # position on the output device instead of at the mercy of thread scheduling.
 # Everything else — JSON, the protocol, the timeline — is std-only, the same

@@ -1,8 +1,8 @@
-# Pulse
+# Metronome
 
 A metronome for [Omarchy](https://omarchy.org): Rust backend, Quickshell/QML
 frontend, and a look that follows your Omarchy theme live — change themes with
-`omarchy theme set` and Pulse repaints without a restart, the same way
+`omarchy theme set` and Metronome repaints without a restart, the same way
 [Flea](https://github.com/thisisgm/flea) does.
 
 ![stack](https://img.shields.io/badge/Rust-backend-informational) ![stack](https://img.shields.io/badge/Quickshell%2FQML-frontend-purple)
@@ -26,7 +26,7 @@ frontend, and a look that follows your Omarchy theme live — change themes with
 - **Omarchy theming**: colors, type scale, spacing and corner radius all come
   from the live theme (`colors.toml`, `shell.toml`), watched for changes.
 - **Remembers itself**: bpm, meter and per-beat voices persist in
-  `~/.config/pulse/state.json`.
+  `~/.config/metronome/state.json`.
 - **Keyboard-first**, like Flea:
 
 | key | action |
@@ -42,27 +42,27 @@ frontend, and a look that follows your Omarchy theme live — change themes with
 
 ```sh
 cargo build --release  # Rust 1.89 or newer
-./target/release/pulse
+./target/release/metronome
 ```
 
-A checkout finds its own `ui/` automatically; `PULSE_UI`, `PULSE_BIN`,
-`PULSE_SILENT` (protocol without audio, for tests and headless boxes) and
-`PULSE_FONT` are the dev seams — see `src/paths.rs` and `src/gui.rs`.
+A checkout finds its own `ui/` automatically; `METRONOME_UI`, `METRONOME_BIN`,
+`METRONOME_SILENT` (protocol without audio, for tests and headless boxes) and
+`METRONOME_FONT` are the dev seams — see `src/paths.rs` and `src/gui.rs`.
 
 ## Installing
 
 ```sh
-sudo install -Dm755 target/release/pulse /usr/local/bin/pulse
-sudo cp -r ui /usr/local/share/pulse/ui
-sudo cp packaging/pulse.desktop /usr/share/applications/
-sudo cp packaging/pulse.svg /usr/share/icons/hicolor/scalable/apps/
+sudo install -Dm755 target/release/metronome /usr/local/bin/metronome
+sudo cp -r ui /usr/local/share/metronome/ui
+sudo cp packaging/metronome.desktop /usr/share/applications/
+sudo cp packaging/metronome.svg /usr/share/icons/hicolor/scalable/apps/
 ```
 
-If you want Pulse to open as a small floating window instead of a tile, give
+If you want Metronome to open as a small floating window instead of a tile, give
 Hyprland a rule (Omarchy's `~/.config/hypr/` user conf or a drop-in):
 
 ```ini
-windowrule = float, class:^(com\.douglasdemoura\.pulse)$
+windowrule = float, class:^(com\.douglasdemoura\.metronome)$
 ```
 
 ## Architecture
@@ -70,9 +70,9 @@ windowrule = float, class:^(com\.douglasdemoura\.pulse)$
 Two processes, one app — Flea's shape:
 
 ```
-pulse (CLI)
- └─ exec qs -p ui/shell.qml          the window; PULSE_BIN tells QML who to call
-     └─ Process: pulse --backend     json lines over stdio, docs/protocol.md
+metronome (CLI)
+ └─ exec qs -p ui/shell.qml          the window; METRONOME_BIN tells QML who to call
+     └─ Process: metronome --backend     json lines over stdio, docs/protocol.md
          └─ cpal output stream        the timeline and the clicks
 ```
 

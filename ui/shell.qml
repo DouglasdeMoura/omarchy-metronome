@@ -1,6 +1,6 @@
-//@ pragma AppId com.douglasdemoura.pulse
-//@ pragma ShellId pulse
-//@ pragma CacheDir $BASE/pulse
+//@ pragma AppId com.douglasdemoura.metronome
+//@ pragma ShellId metronome
+//@ pragma CacheDir $BASE/metronome
 
 import Quickshell
 import QtQuick
@@ -19,7 +19,7 @@ ShellRoot {
 
     FloatingWindow {
         id: window
-        title: "Pulse"
+        title: "Metronome"
         // A golden window: 377 by 610, two neighbours on the Fibonacci run.
         implicitWidth: 377
         implicitHeight: 610

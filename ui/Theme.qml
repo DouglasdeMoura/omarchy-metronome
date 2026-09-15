@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 
-// Pulse reads the Omarchy theme the same way Flea does: colors.toml and
+// Metronome reads the Omarchy theme the same way Flea does: colors.toml and
 // shell.toml are loaded before the first paint, and the one file a theme
 // switch rewrites in place — theme.name — carries the watch, because
 // omarchy-theme-set rm -rf's and mv's the theme directory and an inotify
@@ -51,7 +51,7 @@ Singleton {
     }
 
     readonly property QtObject font: QtObject {
-        property string family: Quickshell.env("PULSE_FONT") || "JetBrainsMono Nerd Font"
+        property string family: Quickshell.env("METRONOME_FONT") || "JetBrainsMono Nerd Font"
         // Omarchy's rem root, from shell.toml [font] base-size; every token
         // below is the shell's own ratio of it.
         property int baseSize: 12
@@ -229,7 +229,7 @@ Singleton {
     }
 
     // Read once, not watched: a theme change restarts nothing here and the
-    // compositor's rounding is not a value Pulse could disagree with twice.
+    // compositor's rounding is not a value Metronome could disagree with twice.
     Process {
         id: roundingQuery
         running: true
