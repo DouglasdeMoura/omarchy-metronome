@@ -15,7 +15,7 @@ Every request names its command in `"c"`.
 | `start` | — | arm the timeline; the first click is one lead-in out |
 | `stop` | — | stop at once; a `stopped` event answers with the beat total |
 | `toggle` | — | start if stopped, stop if running |
-| `params` | any of `bpm`, `beats`, `denominator`, `subdivision`, `subpattern`, `subshape`, `volume`, `voices` | apply; tempo, signature and subdivision changes land at the next click, volume at the next click, numeric ranges clamped; invalid types, voices, denominators and subdivisions rejected |
+| `params` | any of `bpm`, `beats`, `denominator`, `subdivision`, `subpattern`, `subshape`, `volume`, `voices` | apply; tempo, signature and subdivision changes land at the next click, volume at the next click, numeric ranges clamped; invalid types, voices, denominators, subdivisions, subpatterns and subshapes rejected |
 | `save` | same fields as `params` | apply and persist to `~/.config/metronome/state.json` |
 | `quit` | — | drain (stop, last events out), then one `quitready` |
 
@@ -77,8 +77,8 @@ Every event names itself in `"t"`.
 Beat events are emitted by the audio callback at the buffer position where
 the click is mixed in, before the buffer reaches the speakers. Visuals may lead audible output by
 the device buffer latency; the protocol carries no presentation timestamp.
-Tempo, meter and voice changes are read per click, which makes the next
-click the changeover point; volume likewise. `quit` waits for the stop to be
+Tempo, meter, voice and subdivision changes are read per click, which makes
+the next click the changeover point; volume likewise. `quit` waits for the stop to be
 observable before it answers, so a close never races the last beat out.
 
 Repeated start/stop commands are idempotent. Transport requests received before

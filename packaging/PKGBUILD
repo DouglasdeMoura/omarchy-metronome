@@ -23,4 +23,5 @@ package() {
   cp -r ui "$pkgdir/usr/share/metronome/ui"
   install -Dm644 packaging/metronome.desktop "$pkgdir/usr/share/applications/metronome.desktop"
   install -Dm644 packaging/metronome.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/metronome.svg"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

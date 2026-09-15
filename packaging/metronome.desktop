@@ -1,7 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=Metronome
-GenericName=Metronome
 Comment=A metronome that follows your Omarchy theme
 Exec=metronome
 Icon=metronome
