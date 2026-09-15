@@ -1,3 +1,8 @@
 /target
 *.rs.bak
 /dist
+# Sources and build output makepkg leaves beside a recipe
+/packaging/**/*.tar.gz
+/packaging/**/*.pkg.tar.*
+/packaging/**/src/
+/packaging/**/pkg/
