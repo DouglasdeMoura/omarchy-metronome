@@ -120,6 +120,11 @@ metronome (CLI)
 - `src/json.rs` — the whole of the wire-format code; besides cpal the backend
   is std-only.
 
+## Credits
+
+The app icon's metronome shape comes from [Phosphor Icons](https://phosphoricons.com),
+MIT; see `packaging/ICON-LICENSE`.
+
 ## Tests
 
 ```sh

@@ -1,6 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect x="4" y="4" width="56" height="56" rx="14" fill="#282A36"/>
-  <path d="M10 32 H22 L28 20 L35 44 L42 16 L47 32 H54"
-        fill="none" stroke="#BD93F9" stroke-width="5"
-        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Metronome's app icon. The metronome shape is Phosphor's "metronome"
+       (fill weight), MIT, see ICON-LICENSE; the tile, colours, face,
+       graduations, pendulum and base shading are this project's. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3D3846"/>
+      <stop offset="1" stop-color="#241F31"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F66151"/>
+      <stop offset="1" stop-color="#E01B24"/>
+    </linearGradient>
+    <linearGradient id="arm" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9A9996"/>
+      <stop offset="0.5" stop-color="#DEDDDA"/>
+      <stop offset="1" stop-color="#9A9996"/>
+    </linearGradient>
+    <clipPath id="top"><rect x="0" y="0" width="256" height="170"/></clipPath>
+    <clipPath id="base"><rect x="0" y="170" width="256" height="86"/></clipPath>
+    <path id="phosphor-metronome" d="M187.14,114.84l26.78-29.46a8,8,0,0,0-11.84-10.76l-20.55,22.6-17.2-54.07A15.94,15.94,0,0,0,149.08,32H106.91A15.94,15.94,0,0,0,91.66,43.15l-50.91,160A16,16,0,0,0,56,224H200a16,16,0,0,0,15.25-20.85ZM71.27,160,106.91,48h42.17l20,62.9L124.46,160Zm74.81,0,28.62-31.48,10,31.48Z"/>
+  </defs>
+
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#tile)"/>
+  <!-- a faint inner edge, so the tile holds its shape on a dark desktop -->
+  <rect x="4.5" y="4.5" width="55" height="55" rx="13.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.12"/>
+
+  <g transform="translate(32 33.5) scale(0.2) translate(-128 -128)">
+    <!-- a soft shadow the metronome stands on -->
+    <ellipse cx="128" cy="226" rx="92" ry="12" fill="#000" opacity="0.28"/>
+    <!-- the face behind the window -->
+    <path d="M71.27,160 106.91,48h42.17l20,62.9 L184.72,160Z" fill="#F6F5F4"/>
+    <!-- graduations -->
+    <g fill="#77767B">
+      <rect x="112" y="66" width="26" height="7" rx="3.5"/>
+      <rect x="106" y="88" width="30" height="7" rx="3.5"/>
+      <rect x="100" y="110" width="32" height="7" rx="3.5"/>
+      <rect x="94" y="132" width="30" height="7" rx="3.5"/>
+    </g>
+    <!-- the body: bright above, a deeper red for the base -->
+    <use href="#phosphor-metronome" fill="url(#body)" clip-path="url(#top)"/>
+    <use href="#phosphor-metronome" fill="#A51D2D" clip-path="url(#base)"/>
+    <!-- the pendulum and its weight, in silver -->
+    <line x1="126" y1="164" x2="208" y2="80" stroke="url(#arm)" stroke-width="19" stroke-linecap="round"/>
+    <circle cx="176" cy="111.5" r="17" fill="#DEDDDA" stroke="#9A9996" stroke-width="5"/>
+  </g>
 </svg>
