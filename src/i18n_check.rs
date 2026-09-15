@@ -152,8 +152,8 @@ fn literals(line: &str) -> Vec<String> {
     out
 }
 
-const NAMESPACES: [&str; 13] = [
-    "tempo.", "main.", "timeSignature.", "subdivision.", "dialog.", "keys.", "keycap.", "a11y.",
+const NAMESPACES: [&str; 14] = [
+    "app.", "tempo.", "main.", "timeSignature.", "subdivision.", "dialog.", "keys.", "keycap.", "a11y.",
     "voice.", "error.", "cell.", "list.", "rest.",
 ];
 
@@ -269,9 +269,9 @@ fn the_translation_check_catches_what_it_should() {
 
 #[test]
 fn no_user_visible_literal_bypasses_the_catalogue() {
-    // Words the UI shows on purpose without a catalogue: the brand in the
-    // window title, and the digits a font is measured with.
-    let allowed = ["Metronome", "0123456789"];
+    // Words the UI shows on purpose without a catalogue: the digits a font
+    // is measured with.
+    let allowed = ["0123456789"];
     // A literal that is a catalogue key is the catalogue being used.
     let source = catalogue(&ui().join("i18n/en.json"));
     let keys: BTreeSet<&str> = source.iter().map(|(k, _)| k.as_str()).collect();

@@ -76,6 +76,7 @@ ShellRoot {
             // right-to-left language mirrors the layout.
             var I18n = Metronome.I18n
             check(I18n.locale === "en" && I18n.tr("dialog.ok") === "OK", "the tests run in English")
+            check(I18n.tr("app.name") === "Metronome", "the app's name is a catalogue word")
             check(main.tempoName === "Moderato", "the tempo marking comes from the catalogue")
             check(I18n.tr("note.sixteenth", { count: 2 }) === "two sixteenths", "an exact plural form")
             check(I18n.tr("note.sixteenth", { count: 9 }) === "9 sixteenths", "the other form fills its count")

@@ -19,7 +19,8 @@ ShellRoot {
 
     FloatingWindow {
         id: window
-        title: "Metronome"
+        // The app's name is a word like any other: a language names it.
+        title: I18n.tr("app.name")
         // A golden window: 377 by 610, two neighbours on the Fibonacci run.
         implicitWidth: 377
         implicitHeight: 610
