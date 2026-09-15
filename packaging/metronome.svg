@@ -1,23 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <!-- Metronome's app icon. The metronome shape is Phosphor's "metronome"
        (fill weight), MIT, see ICON-LICENSE; the tile, colours, face,
-       graduations, pendulum and base shading are this project's. -->
+       graduations, pendulum and base shading are this project's.
+       Every colour is from Tailwind's palette: white, black, stone-100,
+       stone-200, stone-400, stone-500, red-400, red-600 and red-800. -->
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#DEDDDA"/>
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e7e5e4"/>
     </linearGradient>
     <!-- A squircle: the superellipse |x|^5 + |y|^5 = 1, whose corners curve
          continuously instead of joining a straight edge to a quarter circle. -->
     <path id="squircle" d="M60.00,32.00 L59.99,39.67 L59.97,42.12 L59.92,43.89 L59.86,45.33 L59.78,46.56 L59.69,47.65 L59.57,48.62 L59.44,49.50 L59.29,50.32 L59.13,51.07 L58.94,51.77 L58.74,52.42 L58.51,53.03 L58.27,53.60 L58.01,54.13 L57.72,54.64 L57.42,55.11 L57.09,55.56 L56.75,55.98 L56.38,56.38 L55.98,56.75 L55.56,57.09 L55.11,57.42 L54.64,57.72 L54.13,58.01 L53.60,58.27 L53.03,58.51 L52.42,58.74 L51.77,58.94 L51.07,59.13 L50.32,59.29 L49.50,59.44 L48.62,59.57 L47.65,59.69 L46.56,59.78 L45.33,59.86 L43.89,59.92 L42.12,59.97 L39.67,59.99 L32.00,60.00 L24.33,59.99 L21.88,59.97 L20.11,59.92 L18.67,59.86 L17.44,59.78 L16.35,59.69 L15.38,59.57 L14.50,59.44 L13.68,59.29 L12.93,59.13 L12.23,58.94 L11.58,58.74 L10.97,58.51 L10.40,58.27 L9.87,58.01 L9.36,57.72 L8.89,57.42 L8.44,57.09 L8.02,56.75 L7.62,56.38 L7.25,55.98 L6.91,55.56 L6.58,55.11 L6.28,54.64 L5.99,54.13 L5.73,53.60 L5.49,53.03 L5.26,52.42 L5.06,51.77 L4.87,51.07 L4.71,50.32 L4.56,49.50 L4.43,48.62 L4.31,47.65 L4.22,46.56 L4.14,45.33 L4.08,43.89 L4.03,42.12 L4.01,39.67 L4.00,32.00 L4.01,24.33 L4.03,21.88 L4.08,20.11 L4.14,18.67 L4.22,17.44 L4.31,16.35 L4.43,15.38 L4.56,14.50 L4.71,13.68 L4.87,12.93 L5.06,12.23 L5.26,11.58 L5.49,10.97 L5.73,10.40 L5.99,9.87 L6.28,9.36 L6.58,8.89 L6.91,8.44 L7.25,8.02 L7.62,7.62 L8.02,7.25 L8.44,6.91 L8.89,6.58 L9.36,6.28 L9.87,5.99 L10.40,5.73 L10.97,5.49 L11.58,5.26 L12.23,5.06 L12.93,4.87 L13.68,4.71 L14.50,4.56 L15.38,4.43 L16.35,4.31 L17.44,4.22 L18.67,4.14 L20.11,4.08 L21.88,4.03 L24.33,4.01 L32.00,4.00 L39.67,4.01 L42.12,4.03 L43.89,4.08 L45.33,4.14 L46.56,4.22 L47.65,4.31 L48.62,4.43 L49.50,4.56 L50.32,4.71 L51.07,4.87 L51.77,5.06 L52.42,5.26 L53.03,5.49 L53.60,5.73 L54.13,5.99 L54.64,6.28 L55.11,6.58 L55.56,6.91 L55.98,7.25 L56.38,7.62 L56.75,8.02 L57.09,8.44 L57.42,8.89 L57.72,9.36 L58.01,9.87 L58.27,10.40 L58.51,10.97 L58.74,11.58 L58.94,12.23 L59.13,12.93 L59.29,13.68 L59.44,14.50 L59.57,15.38 L59.69,16.35 L59.78,17.44 L59.86,18.67 L59.92,20.11 L59.97,21.88 L59.99,24.33 Z"/>
     <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#F66151"/>
-      <stop offset="1" stop-color="#E01B24"/>
+      <stop offset="0" stop-color="#f87171"/>
+      <stop offset="1" stop-color="#dc2626"/>
     </linearGradient>
     <linearGradient id="arm" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#9A9996"/>
-      <stop offset="0.5" stop-color="#DEDDDA"/>
-      <stop offset="1" stop-color="#9A9996"/>
+      <stop offset="0" stop-color="#a8a29e"/>
+      <stop offset="0.5" stop-color="#e7e5e4"/>
+      <stop offset="1" stop-color="#a8a29e"/>
     </linearGradient>
     <clipPath id="top"><rect x="0" y="0" width="256" height="170"/></clipPath>
     <clipPath id="base"><rect x="0" y="170" width="256" height="86"/></clipPath>
@@ -30,9 +32,9 @@
 
   <g transform="translate(32 33.5) scale(0.2) translate(-128 -128)">
     <!-- the face behind the window -->
-    <path d="M71.27,160 106.91,48h42.17l20,62.9 L184.72,160Z" fill="#F6F5F4"/>
+    <path d="M71.27,160 106.91,48h42.17l20,62.9 L184.72,160Z" fill="#f5f5f4"/>
     <!-- graduations -->
-    <g fill="#77767B">
+    <g fill="#78716c">
       <rect x="112" y="66" width="26" height="7" rx="3.5"/>
       <rect x="106" y="88" width="30" height="7" rx="3.5"/>
       <rect x="100" y="110" width="32" height="7" rx="3.5"/>
@@ -40,9 +42,9 @@
     </g>
     <!-- the body: bright above, a deeper red for the base -->
     <use href="#phosphor-metronome" fill="url(#body)" clip-path="url(#top)"/>
-    <use href="#phosphor-metronome" fill="#A51D2D" clip-path="url(#base)"/>
+    <use href="#phosphor-metronome" fill="#991b1b" clip-path="url(#base)"/>
     <!-- the pendulum and its weight, in silver -->
     <line x1="126" y1="164" x2="208" y2="80" stroke="url(#arm)" stroke-width="19" stroke-linecap="round"/>
-    <circle cx="176" cy="111.5" r="17" fill="#DEDDDA" stroke="#9A9996" stroke-width="5"/>
+    <circle cx="176" cy="111.5" r="17" fill="#e7e5e4" stroke="#a8a29e" stroke-width="5"/>
   </g>
 </svg>
