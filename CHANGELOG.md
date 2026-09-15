@@ -4,6 +4,21 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-09-15
+
+### Added
+
+- Screenshots in the README, in the Tokyo Night and Catppuccin Latte themes.
+- AUR publishing from GitHub: every release now updates `winkel`,
+  `winkel-bin` and `winkel-git`, and `packaging/aur/set-version.sh` and
+  `packaging/aur/publish.sh` do the same from a local machine.
+
+### Changed
+
+- The README is reorganised and rewritten for clarity, with a licence
+  section and a floating-window recipe for Hyprland.
+- The release recipes carry real checksums.
+
 ## [0.1.0] - 2026-09-15
 
 The first release.
