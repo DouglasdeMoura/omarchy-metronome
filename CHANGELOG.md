@@ -16,6 +16,12 @@ All notable changes to this project are recorded here. The format follows
   (128, 128) — the triangle's box leans right of centre precisely so the
   shape does not.
 
+### Fixed
+
+- The README's screenshots are retaken. They still showed the meter as it
+  was before 0.1.4 marked the beat being played. `tools/screenshots.sh`
+  takes them now, offscreen and the same twice, so they can keep up.
+
 ## [0.1.4] - 2026-09-16
 
 ### Added

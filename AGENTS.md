@@ -82,6 +82,9 @@ the package.
   and `dist` for a release tarball whose `make install` needs no cargo.
 - `packaging/` — the desktop entry, icon and AppStream metainfo, all named
   after the app id, and `aur/` with the source, `-bin` and `-git` packages.
+- `tools/screenshots.sh` — retakes the README's screenshots offscreen, three
+  views in each of two themes, from `tools/screenshots.qml` and a stub
+  backend. Same pixels twice; see docs/releasing.md.
 - `.github/workflows/` — `ci.yml` runs both test suites in an Arch container;
   `release.yml` builds x86_64 and aarch64 tarballs on a `v*` tag, publishes
   the release, then calls `aur.yml`, which publishes the three AUR packages
