@@ -48,6 +48,12 @@ Singleton {
         // foreground ink at the alphas the shell itself uses.
         readonly property color line: Qt.alpha(root.color.foreground, 0.25)
         readonly property color lineSoft: Qt.alpha(root.color.foreground, 0.12)
+        // Muted is a comment colour: most Omarchy themes set it too faint to
+        // read as text. These are that colour lifted just far enough to pass
+        // WCAG AA on what sits behind them, so a theme that is already
+        // readable keeps its own ink exactly.
+        readonly property color caption: root.readable(root.color.muted, root.color.background, root.color.foreground, 4.5)
+        readonly property color captionOnSurface: root.readable(root.color.muted, root.color.surface, root.color.foreground, 4.5)
     }
 
     readonly property QtObject font: QtObject {
@@ -64,6 +70,41 @@ Singleton {
         readonly property int display: Math.round(baseSize * 24 / 12)
         // The hero numeral is not a token: Main.qml sizes it by ink, so its
         // digits stand golden(4) tall.
+    }
+
+    // WCAG's relative luminance and contrast ratio. A colour may arrive as a
+    // colour or as a string, so every entry point coerces first: a string's
+    // .r is undefined, and the arithmetic would quietly give NaN.
+    function luminance(colour) {
+        var c = Qt.color(colour)
+        function channel(v) {
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b)
+    }
+
+    function contrast(a, b) {
+        var la = luminance(a)
+        var lb = luminance(b)
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+    }
+
+    // `ink` stepped toward `toward` until it reads at `target` against `on`.
+    // The theme's own colour survives wherever it already passes, and the
+    // step is small enough that the hue is kept as long as possible.
+    function readable(ink, on, toward, target) {
+        var from = Qt.color(ink)
+        var to = Qt.color(toward)
+        if (contrast(from, on) >= target) return from
+        for (var i = 1; i <= 20; i++) {
+            var t = i / 20
+            var c = Qt.rgba(from.r + (to.r - from.r) * t,
+                            from.g + (to.g - from.g) * t,
+                            from.b + (to.b - from.b) * t,
+                            1)
+            if (contrast(c, on) >= target) return c
+        }
+        return to
     }
 
     // shell.toml [spacing] scale, the same multiplier the bar applies.

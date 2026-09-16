@@ -4,6 +4,17 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Dialog titles, the tempo marking and the other captions were drawn in the
+  theme's muted colour, which most Omarchy themes set too faint to read: 32
+  of the 39 themes installed here fell below WCAG AA, as low as 1.3:1. Each
+  caption is now lifted toward the foreground only as far as it takes to
+  reach 4.5:1 on the surface behind it, so a theme that already reads well
+  keeps its own ink.
+
 ## [0.1.1] - 2026-09-15
 
 ### Added

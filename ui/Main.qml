@@ -564,7 +564,7 @@ Item {
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.tempoName
-                    color: Theme.color.muted
+                    color: Theme.color.caption
                     font.family: Theme.font.family
                     font.pixelSize: Theme.font.caption
                     font.capitalization: Font.AllUppercase
@@ -896,7 +896,7 @@ Item {
                     text: I18n.tr("timeSignature.title")
                     font.capitalization: Font.AllUppercase
                     elide: Text.ElideRight
-                    color: Theme.color.muted
+                    color: Theme.color.captionOnSurface
                     font.family: Theme.font.family
                     font.pixelSize: Theme.font.caption
 
@@ -936,7 +936,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "/"
-                            color: Theme.color.muted
+                            color: Theme.color.captionOnSurface
                             font.family: Theme.font.family
                             font.pixelSize: Theme.font.heading
                         }
@@ -1130,7 +1130,7 @@ Item {
                     text: I18n.tr("subdivision.title")
                     font.capitalization: Font.AllUppercase
                     elide: Text.ElideRight
-                    color: Theme.color.muted
+                    color: Theme.color.captionOnSurface
                     font.family: Theme.font.family
                     font.pixelSize: Theme.font.caption
 
@@ -1187,7 +1187,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: I18n.tr("subdivision.notes")
                             font.capitalization: Font.AllUppercase
-                            color: Theme.color.muted
+                            color: Theme.color.captionOnSurface
                             font.family: Theme.font.family
                             font.pixelSize: Theme.font.caption
                         }
@@ -1378,7 +1378,7 @@ Item {
                         text: I18n.tr("keys.title")
                         font.capitalization: Font.AllUppercase
                         elide: Text.ElideRight
-                        color: Theme.color.muted
+                        color: Theme.color.captionOnSurface
                         font.family: Theme.font.family
                         font.pixelSize: Theme.font.caption
                     }
@@ -1386,6 +1386,7 @@ Item {
                     ChromeButton {
                         id: keysClose
                         glyph: "✕"
+                        restingColor: Theme.color.captionOnSurface
                         accessibleName: I18n.tr("a11y.close")
                         glyphSize: Theme.font.bodySmall
                         anchors.right: parent.right
@@ -1438,7 +1439,7 @@ Item {
                                 anchors.rightMargin: Theme.spacing.rowPaddingX
                                 horizontalAlignment: Text.AlignLeft
                                 text: I18n.tr(modelData[1])
-                                color: Theme.color.muted
+                                color: Theme.color.captionOnSurface
                                 font.family: Theme.font.family
                                 font.pixelSize: Theme.font.bodySmall
                                 wrapMode: Text.WordWrap

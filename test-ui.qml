@@ -97,7 +97,20 @@ ShellRoot {
             check(I18n.tr("error.backendExited", { code: 3 }).indexOf("3") > 0, "pseudo keeps placeholders")
             I18n.setLocale("en")
             check(main.errorMessage === "No audio output — running silently", "back to English")
-            console.log("PASS: frontend voices, loading, silent warning, save, meter limit, subdivision, catalogue, i18n")
+            // Captions are lifted until they read on the ground behind them.
+            var Theme = Winkel.Theme
+            check(Theme.contrast(Theme.color.captionOnSurface, Theme.color.surface) >= 4.5,
+                  "the card's captions must pass 4.5:1, got " + Theme.contrast(Theme.color.captionOnSurface, Theme.color.surface).toFixed(2))
+            check(Theme.contrast(Theme.color.caption, Theme.color.background) >= 4.5,
+                  "the window's captions must pass 4.5:1, got " + Theme.contrast(Theme.color.caption, Theme.color.background).toFixed(2))
+            // The worst theme installed here, rose-pine: muted #6E6A86 on its
+            // card #191724 reads at 1.32:1 and must come back readable.
+            var lifted = Theme.readable("#6E6A86", "#191724", "#E0DEF4", 4.5)
+            check(Theme.contrast(lifted, "#191724") >= 4.5, "a faint theme must lift to 4.5:1")
+            // A caption that already passes keeps the theme's own colour.
+            check(Theme.contrast(Theme.readable("#E0DEF4", "#191724", "#FFFFFF", 4.5), "#191724")
+                  === Theme.contrast("#E0DEF4", "#191724"), "a readable caption is left alone")
+            console.log("PASS: frontend voices, loading, silent warning, save, meter limit, subdivision, catalogue, i18n, contrast")
             Qt.quit()
         }
     }
