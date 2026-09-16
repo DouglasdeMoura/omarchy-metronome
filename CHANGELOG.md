@@ -4,6 +4,18 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The transport's play and stop marks are Phosphor's own icons, fill weight,
+  the family the app icon's metronome already comes from. Drawn as paths, so
+  they still do not depend on a font carrying the mark, and still centred by
+  mass rather than by box: measured in Phosphor's 256 grid, the play
+  triangle's centroid sits at (127.6, 128) and the stop square's at
+  (128, 128) — the triangle's box leans right of centre precisely so the
+  shape does not.
+
 ## [0.1.4] - 2026-09-16
 
 ### Added

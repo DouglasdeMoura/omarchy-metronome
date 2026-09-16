@@ -199,6 +199,7 @@ recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-Winkel is released under the [MIT License](LICENSE). The metronome shape in
-its icon comes from [Phosphor Icons](https://phosphoricons.com), also MIT; see
+Winkel is released under the [MIT License](LICENSE). The metronome shape in its
+icon and the play and stop marks on its transport come from
+[Phosphor Icons](https://phosphoricons.com), also MIT; see
 [`packaging/ICON-LICENSE`](packaging/ICON-LICENSE).

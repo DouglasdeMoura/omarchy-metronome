@@ -1,46 +1,44 @@
 import QtQuick
+import QtQuick.Shapes
 
-// The transport's mark, drawn rather than typed. A font's ▶ and ■ are not
+// The transport's mark: Phosphor's "play" and "stop" icons, fill weight (MIT,
+// see packaging/ICON-LICENSE), the same family the app icon's metronome comes
+// from. Drawn as paths rather than typed, because a font's ▶ and ■ are not
 // centred on their own ink, differ between fonts, and may be missing
-// altogether; drawn, the triangle sits on its centroid and the square on its
-// middle, so both are exactly centred in the circle at any size.
-Canvas {
+// altogether.
+//
+// Phosphor balances each icon on its own centre of mass inside the 256 grid:
+// the play triangle's centroid sits at (127.6, 128) — its box leans right of
+// centre precisely so the shape does not — and the stop square is centred both
+// ways. So the grid is centred on the circle and neither mark needs a nudge.
+Item {
     id: root
 
     property bool running: false
     property color ink: "black"
-    // The mark's height: the triangle's base-to-tip and, a touch smaller so
-    // the two read as equals, the square's side. 0.24 of the circle is the
-    // weight the typed marks had.
-    property real mark: Math.round(width * 0.24)
+    // The play triangle's height, base to tip, as a fraction of the circle.
+    // 0.24 is the weight the marks have always had here; the stop square
+    // follows from it at Phosphor's own ratio, so the two read as equals.
+    property real mark: width * 0.24
 
-    onRunningChanged: requestPaint()
-    onInkChanged: requestPaint()
-    onMarkChanged: requestPaint()
+    // Phosphor's ink inside its 256 grid: the triangle is 208.1 tall.
+    readonly property real box: root.mark * 256 / 208.1
 
-    onPaint: {
-        var ctx = getContext("2d")
-        ctx.clearRect(0, 0, width, height)
-        ctx.fillStyle = root.ink
-        var cx = width / 2
-        var cy = height / 2
+    readonly property string playPath: "M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"
+    readonly property string stopPath: "M216,56V200a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40H200A16,16,0,0,1,216,56Z"
 
-        if (root.running) {
-            var side = root.mark * 0.88
-            ctx.fillRect(Math.round(cx - side / 2), Math.round(cy - side / 2), Math.round(side), Math.round(side))
-            return
+    Shape {
+        width: root.box
+        height: root.box
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        preferredRendererType: Shape.CurveRenderer
+        transform: Scale { xScale: root.box / 256; yScale: root.box / 256 }
+
+        ShapePath {
+            fillColor: root.ink
+            strokeColor: "transparent"
+            PathSvg { path: root.running ? root.stopPath : root.playPath }
         }
-
-        // An equilateral triangle pointing right, placed so its centroid,
-        // a third of the way back from the tip, lands on the centre.
-        var h = root.mark                 // the height, base to tip
-        var w = h * 0.866                 // the width of an equilateral triangle
-        var left = cx - w / 3             // the base, a third of the width back
-        ctx.beginPath()
-        ctx.moveTo(left, cy - h / 2)
-        ctx.lineTo(left + w, cy)
-        ctx.lineTo(left, cy + h / 2)
-        ctx.closePath()
-        ctx.fill()
     }
 }

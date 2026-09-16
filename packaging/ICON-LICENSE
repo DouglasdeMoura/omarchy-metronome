@@ -1,7 +1,12 @@
-The metronome shape in packaging/dev.douglasmoura.winkel.svg is the "metronome" icon, fill
-weight, from Phosphor Icons (https://github.com/phosphor-icons/core), used
-under the MIT License below. This project added the tile, the colours, the
-face, the graduations, the pendulum and the base shading.
+Two things here come from Phosphor Icons
+(https://github.com/phosphor-icons/core), used under the MIT License below.
+
+The metronome shape in packaging/dev.douglasmoura.winkel.svg is the "metronome"
+icon, fill weight. This project added the tile, the colours, the face, the
+graduations, the pendulum and the base shading.
+
+The transport's marks in ui/PlayMark.qml are the "play" and "stop" icons, fill
+weight, their paths unchanged.
 
 MIT License
 
