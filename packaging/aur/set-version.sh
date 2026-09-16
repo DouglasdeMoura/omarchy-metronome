@@ -22,3 +22,12 @@ for recipe in packaging/aur/winkel packaging/aur/winkel-bin packaging/omarchy/wi
   (cd "$dir" && updpkgsums >/dev/null 2>&1 && rm -f ./*.tar.gz)
   echo "$recipe: $version"
 done
+
+# The -git recipe works its version out at build time; the one recorded here
+# is what the AUR shows, so it follows the release and the commit it was cut
+# from.
+gitrecipe="$root/packaging/aur/winkel-git"
+if [ -d "$gitrecipe" ] && commit="$(git -C "$root" rev-parse --short=7 HEAD 2>/dev/null)"; then
+  sed -i "s/^pkgver=.*/pkgver=$version.r0.g$commit/" "$gitrecipe/PKGBUILD"
+  echo "packaging/aur/winkel-git: $version.r0.g$commit"
+fi
