@@ -4,6 +4,25 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- The beat meter marks the beat being played: a hairline over that beat's
+  column, the ladder's smallest step thick, standing on the same gap the
+  bars keep between themselves. The mark is clear of the fill, so a silent
+  beat and a high one announce themselves alike — the beat is happening
+  either way, it just makes no sound.
+
+### Changed
+
+- The playing beat no longer lights its empty bars. That hint rode on the
+  headroom a beat had left, so it was three bars of change on a silent beat
+  and nothing at all on a high one, whose bars are already full; and at 12%
+  to 25% of the foreground it read at about 2:1 against the background,
+  below what peripheral vision catches — which is how a metronome's meter
+  is read.
+
 ## [0.1.3] - 2026-09-16
 
 ### Fixed

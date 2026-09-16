@@ -505,6 +505,9 @@ Item {
                 readonly property int barWidth: rectWidth
                 readonly property int barHeight: Math.round(barWidth / Theme.phi)
                 readonly property int barGap: Theme.golden(-1)
+                // The playhead's own strip, over the bars: a hairline of the
+                // ladder, on the same gap the bars keep between themselves.
+                readonly property int headHeight: Theme.golden(-2)
 
                 Repeater {
                     id: metersRepeater
@@ -521,15 +524,16 @@ Item {
                         Accessible.onPressAction: root.cycleVoice(index)
                         readonly property bool isNow: root.running && root.currentBeat === index
                         width: meters.rectWidth
-                        height: 3 * meters.barHeight + 2 * meters.barGap
+                        height: 3 * meters.barHeight + 3 * meters.barGap
+                              + meters.headHeight
                         radius: 0
                         color: "transparent"
 
                         // The bars stack from the bottom, so the fill reads
-                        // as a level: one bar low, three high. No frame: the
-                        // playing beat is the one whose empty bars light up.
+                        // as a level: one bar low, three high.
                         Column {
-                            anchors.centerIn: parent
+                            anchors.bottom: parent.bottom
+                            anchors.horizontalCenter: parent.horizontalCenter
                             spacing: meters.barGap
 
                             Repeater {
@@ -541,9 +545,24 @@ Item {
                                     height: meters.barHeight
                                     radius: 0
                                     color: fillOrder < pick.voice ? Theme.color.accent
-                                         : pick.isNow ? Theme.color.line : Theme.color.lineSoft
+                                                                  : Theme.color.lineSoft
                                 }
                             }
+                        }
+
+                        // The playhead: the mark over the beat being
+                        // played. It stands clear of the fill, so a silent
+                        // beat and a high one announce themselves alike —
+                        // the beat is happening either way, it just makes
+                        // no sound.
+                        Rectangle {
+                            objectName: "playhead" + index
+                            anchors.top: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: meters.barWidth
+                            height: meters.headHeight
+                            radius: 0
+                            color: pick.isNow ? Theme.color.accent : "transparent"
                         }
 
                         HoverHandler { cursorShape: Qt.PointingHandCursor }

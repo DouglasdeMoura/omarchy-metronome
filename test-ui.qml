@@ -38,6 +38,31 @@ ShellRoot {
                     check(backend.patched.voices.length === 16, "pattern must retain sixteen slots")
                 }
             }
+            // The playhead marks the beat being played. It stands clear of
+            // the fill, so beat one — three bars full, nothing left to light
+            // up — is marked exactly like any other.
+            function playhead(i) {
+                function walk(item) {
+                    if (item.objectName === "playhead" + i) return item
+                    for (var k = 0; k < item.children.length; k++) {
+                        var found = walk(item.children[k])
+                        if (found) return found
+                    }
+                    return null
+                }
+                return walk(main)
+            }
+            check(main.voices[0] === 3, "beat one fills every bar")
+            check(playhead(0) && playhead(main.beats - 1), "every beat has a playhead")
+            check(playhead(0).color.a === 0, "a stopped metronome marks nothing")
+            backend.started()
+            backend.beat(0, "high")
+            check(playhead(0).color.a > 0, "the played beat is marked though its bars are full")
+            check(playhead(1).color.a === 0, "only the played beat is marked")
+            backend.beat(1, "low")
+            check(playhead(0).color.a === 0 && playhead(1).color.a > 0, "the mark follows the beat")
+            backend.stopped(2)
+            check(playhead(1).color.a === 0, "stopping clears the mark")
             backend.readyReceived("silent", 48000, true)
             check(main.errorMessage.length > 0, "silent output must stay visible")
             main.flushSave()
@@ -110,7 +135,7 @@ ShellRoot {
             // A caption that already passes keeps the theme's own colour.
             check(Theme.contrast(Theme.readable("#E0DEF4", "#191724", "#FFFFFF", 4.5), "#191724")
                   === Theme.contrast("#E0DEF4", "#191724"), "a readable caption is left alone")
-            console.log("PASS: frontend voices, loading, silent warning, save, meter limit, subdivision, catalogue, i18n, contrast")
+            console.log("PASS: frontend voices, playhead, loading, silent warning, save, meter limit, subdivision, catalogue, i18n, contrast")
             Qt.quit()
         }
     }
