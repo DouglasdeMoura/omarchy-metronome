@@ -718,13 +718,10 @@ Item {
                         NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
                     }
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: root.running ? "■" : "▶"
-                        color: Theme.color.background
-                        font.family: Theme.font.family
-                        // Two steps inside the circle: 89, 55, 34.
-                        font.pixelSize: Theme.golden(3)
+                    PlayMark {
+                        anchors.fill: parent
+                        running: root.running
+                        ink: Theme.color.background
                     }
 
                     HoverHandler { cursorShape: Qt.PointingHandCursor }

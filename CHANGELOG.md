@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The transport's play and stop marks are drawn rather than typed. A font's
+  ▶ and ■ are not centred on their own ink: the triangle sat 3.3 px left and
+  1 px high of the circle's centre, the square 1 px high. Drawn, the triangle
+  rests on its centroid and the square on its middle, so both are exactly
+  centred at any size, and neither depends on the font carrying the mark.
+
 ## [0.1.2] - 2026-09-15
 
 ### Fixed
