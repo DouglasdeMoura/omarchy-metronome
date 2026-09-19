@@ -843,10 +843,26 @@ Item {
         // --- the time signature editor, over everything while open ---
         // The wheels spin a draft; ok commits it to the metronome, cancel —
         // or a click outside — throws the draft away.
-        MouseArea {
+        // Flea's ground under an open card: the window dimmed by half, and a
+        // press on it is a cancel. It swallows the wheel so nothing behind
+        // the card turns while it is up.
+        component Ground: Rectangle {
+            signal dismissed()
             anchors.fill: parent
+            color: Qt.alpha(Theme.color.background, Theme.groundOpacity)
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                hoverEnabled: true
+                onClicked: parent.dismissed()
+                onWheel: function (wheel) { wheel.accepted = true }
+            }
+        }
+
+        Ground {
             visible: root.tsOpen
-            onClicked: root.tsOpen = false
+            onDismissed: root.tsOpen = false
         }
 
         Rectangle {
@@ -902,19 +918,20 @@ Item {
                 anchors.topMargin: Theme.spacing.rowPaddingX
                 spacing: 0
 
-                // Flea's dialog header: the title sits at the card's left
-                // padding on a hairline rule, and the body hangs below it.
+                // Flea's dialog header: the title, bold in the body's size,
+                // sits at the card's left padding on a hairline rule, and
+                // the body hangs below it.
                 Text {
                     width: parent.width
                     leftPadding: Theme.spacing.rowPaddingX
                     rightPadding: Theme.spacing.rowPaddingX
                     bottomPadding: Theme.spacing.gap
                     text: I18n.tr("timeSignature.title")
-                    font.capitalization: Font.AllUppercase
                     elide: Text.ElideRight
-                    color: Theme.color.captionOnSurface
+                    color: Theme.color.foreground
                     font.family: Theme.font.family
-                    font.pixelSize: Theme.font.caption
+                    font.pixelSize: Theme.font.body
+                    font.bold: true
 
                     Rectangle {
                         anchors.bottom: parent.bottom
@@ -1002,10 +1019,9 @@ Item {
         // The plain cells a beat can be, a tile each, in bands by grid, and
         // a custom row beneath that reaches every other one;
         // ok commits the draft, cancel or a click outside throws it away.
-        MouseArea {
-            anchors.fill: parent
+        Ground {
             visible: root.subOpen
-            onClicked: root.subOpen = false
+            onDismissed: root.subOpen = false
         }
 
         Rectangle {
@@ -1100,8 +1116,8 @@ Item {
 
                 Rectangle {
                     anchors.fill: parent
-                    color: parent.chosen ? Qt.alpha(Theme.color.accent, 0.12)
-                         : tileHover.hovered ? Theme.color.lineSoft : "transparent"
+                    color: parent.chosen ? Theme.color.selectedFill
+                         : tileHover.hovered ? Theme.color.hoverFill : "transparent"
                 }
 
                 NoteFigure {
@@ -1144,11 +1160,11 @@ Item {
                     rightPadding: Theme.spacing.rowPaddingX
                     bottomPadding: Theme.spacing.gap
                     text: I18n.tr("subdivision.title")
-                    font.capitalization: Font.AllUppercase
                     elide: Text.ElideRight
-                    color: Theme.color.captionOnSurface
+                    color: Theme.color.foreground
                     font.family: Theme.font.family
-                    font.pixelSize: Theme.font.caption
+                    font.pixelSize: Theme.font.body
+                    font.bold: true
 
                     Rectangle {
                         anchors.bottom: parent.bottom
@@ -1202,7 +1218,10 @@ Item {
                             width: Math.max(Theme.golden(4), implicitWidth + Theme.golden(-1))
                             anchors.verticalCenter: parent.verticalCenter
                             text: I18n.tr("subdivision.notes")
+                            // Flea's eyebrow: small caps, bold and tracked.
                             font.capitalization: Font.AllUppercase
+                            font.bold: true
+                            font.letterSpacing: Theme.font.caption * 0.14
                             color: Theme.color.captionOnSurface
                             font.family: Theme.font.family
                             font.pixelSize: Theme.font.caption
@@ -1327,10 +1346,9 @@ Item {
         // --- the keys sheet: ? opens it, esc, ? or the x closes it ---
         // The same card as the time signature editor, without actions: the
         // header carries the close, and a click outside is a close too.
-        MouseArea {
-            anchors.fill: parent
+        Ground {
             visible: root.keysOpen
-            onClicked: root.keysOpen = false
+            onDismissed: root.keysOpen = false
         }
 
         Rectangle {
@@ -1361,16 +1379,18 @@ Item {
                 ["keycap.question", "keys.sheet"]
             ]
 
-            // The cap column fits the widest cap in this language.
             FontMetrics {
                 id: capMetrics
                 font.family: Theme.font.family
-                font.pixelSize: Theme.font.bodySmall
+                font.pixelSize: Theme.font.caption
             }
+            // Flea's cap is the height of a row's mark, and the column is
+            // as wide as the widest cap in this language.
+            readonly property int capHeight: Math.round(Theme.font.bodySmall * 1.45)
             readonly property int capWidth: {
-                var widest = Theme.space(96)
+                var widest = capHeight
                 for (var i = 0; i < bindings.length; i++)
-                    widest = Math.max(widest, Math.ceil(capMetrics.advanceWidth(I18n.tr(bindings[i][0]))) + Theme.spacing.gap)
+                    widest = Math.max(widest, Math.ceil(capMetrics.advanceWidth(I18n.shortcut(bindings[i][0]))) + Theme.spacing.gap)
                 return widest
             }
 
@@ -1381,19 +1401,32 @@ Item {
                 anchors.topMargin: Theme.spacing.rowPaddingX
                 spacing: 0
 
+                // Flea's settings header: the title, then "esc" and the
+                // close mark at the right, over a hairline rule.
                 Item {
                     width: parent.width
-                    height: keysTitle.implicitHeight + Theme.spacing.gap
+                    height: Math.max(keysTitle.implicitHeight, keysClose.height) + Theme.spacing.gap
 
                     Text {
                         id: keysTitle
                         anchors.left: parent.left
                         anchors.leftMargin: Theme.spacing.rowPaddingX
-                        anchors.top: parent.top
-                        anchors.right: keysClose.left
+                        anchors.right: keysEsc.left
+                        anchors.rightMargin: Theme.spacing.gap
+                        anchors.verticalCenter: keysClose.verticalCenter
                         text: I18n.tr("keys.title")
-                        font.capitalization: Font.AllUppercase
                         elide: Text.ElideRight
+                        color: Theme.color.foreground
+                        font.family: Theme.font.family
+                        font.pixelSize: Theme.font.body
+                        font.bold: true
+                    }
+
+                    Text {
+                        id: keysEsc
+                        anchors.right: keysClose.left
+                        anchors.verticalCenter: keysClose.verticalCenter
+                        text: I18n.tr("keycap.esc")
                         color: Theme.color.captionOnSurface
                         font.family: Theme.font.family
                         font.pixelSize: Theme.font.caption
@@ -1402,14 +1435,14 @@ Item {
                     ChromeButton {
                         id: keysClose
                         glyph: "✕"
-                        restingColor: Theme.color.captionOnSurface
+                        restingColor: Theme.color.foreground
                         accessibleName: I18n.tr("a11y.close")
                         glyphSize: Theme.font.bodySmall
                         anchors.right: parent.right
                         anchors.rightMargin: Theme.spacing.gap
-                        anchors.verticalCenter: keysTitle.verticalCenter
-                        width: Theme.space(24)
-                        height: Theme.space(20)
+                        anchors.top: parent.top
+                        width: Theme.hitMin
+                        height: Theme.hitMin
                         onActivated: root.keysOpen = false
                     }
 
@@ -1430,34 +1463,51 @@ Item {
                     Repeater {
                         model: keysPanel.bindings
 
+                        // Flea's keymap row: the key in a hairline cap, what
+                        // it does beside it in caption ink.
                         Item {
                             width: parent.width
-                            height: Math.max(keyLabel.implicitHeight, keyAction.implicitHeight)
+                            height: Math.max(keysPanel.capHeight, keyAction.implicitHeight)
 
-                            Text {
-                                id: keyLabel
+                            Rectangle {
+                                id: keyCap
                                 anchors.left: parent.left
                                 anchors.leftMargin: Theme.spacing.rowPaddingX
+                                anchors.top: parent.top
                                 width: keysPanel.capWidth
-                                // Set, not implied, so mirroring swaps it to the
-                                // cap column's outer edge.
-                                horizontalAlignment: Text.AlignLeft
-                                text: I18n.shortcut(modelData[0])
-                                color: Theme.color.foreground
-                                font.family: Theme.font.family
-                                font.pixelSize: Theme.font.bodySmall
+                                height: keysPanel.capHeight
+                                color: "transparent"
+                                border.width: Theme.spacing.hairline
+                                border.color: Theme.color.muted
+
+                                Text {
+                                    anchors.fill: parent
+                                    anchors.margins: Theme.spacing.hairline
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    text: I18n.shortcut(modelData[0])
+                                    color: Theme.color.foreground
+                                    font.family: Theme.font.family
+                                    font.pixelSize: Theme.font.caption
+                                    elide: Text.ElideRight
+                                }
                             }
 
                             Text {
                                 id: keyAction
-                                anchors.left: keyLabel.right
+                                anchors.left: keyCap.right
+                                anchors.leftMargin: Theme.spacing.gap
                                 anchors.right: parent.right
                                 anchors.rightMargin: Theme.spacing.rowPaddingX
+                                anchors.top: parent.top
+                                // Centred on the cap's line; a label that
+                                // wraps hangs from it instead.
+                                topPadding: Math.max(0, (keysPanel.capHeight - capMetrics.height) / 2)
                                 horizontalAlignment: Text.AlignLeft
                                 text: I18n.tr(modelData[1])
                                 color: Theme.color.captionOnSurface
                                 font.family: Theme.font.family
-                                font.pixelSize: Theme.font.bodySmall
+                                font.pixelSize: Theme.font.caption
                                 wrapMode: Text.WordWrap
                             }
                         }

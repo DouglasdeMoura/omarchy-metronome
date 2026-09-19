@@ -48,6 +48,10 @@ Singleton {
         // foreground ink at the alphas the shell itself uses.
         readonly property color line: Qt.alpha(root.color.foreground, 0.25)
         readonly property color lineSoft: Qt.alpha(root.color.foreground, 0.12)
+        // Flea's two row states, from the shell's [controls] alphas: the lift
+        // under a pointer, and the accent wash on the chosen one.
+        readonly property color hoverFill: Qt.alpha(root.color.foreground, root.hoverFillAlpha)
+        readonly property color selectedFill: Qt.alpha(root.color.accent, root.selectedFillAlpha)
         // Muted is a comment colour: most Omarchy themes set it too faint to
         // read as text. These are that colour lifted just far enough to pass
         // WCAG AA on what sits behind them, so a theme that is already
@@ -127,6 +131,10 @@ Singleton {
     // lines up with a card there: a hairline, a row's side padding, a gap.
     // The smallest a dialog action gets, Flea's own floor.
     readonly property int hitMin: 24
+    // How far Flea dims the window behind an open card.
+    readonly property real groundOpacity: 0.5
+    property real hoverFillAlpha: 0.08
+    property real selectedFillAlpha: 0.18
 
     readonly property QtObject spacing: QtObject {
         readonly property int hairline: root.space(1)
@@ -178,6 +186,13 @@ Singleton {
         // base size, measured from the 12 it defaults to.
         var withFont = doc["spacing.scale-with-font"] !== "false"
         root.spacingScale = scale * (withFont ? root.font.baseSize / 12 : 1)
+        root.hoverFillAlpha = alphaOf(doc["controls.hover-cursor-fill-alpha"], 0.08)
+        root.selectedFillAlpha = alphaOf(doc["controls.selected-fill-alpha"], 0.18)
+    }
+
+    function alphaOf(value, fallback) {
+        var a = parseFloat(value)
+        return isNaN(a) ? fallback : Math.max(0, Math.min(1, a))
     }
 
     // The smallest TOML reader the two files call for: key = value lines,
