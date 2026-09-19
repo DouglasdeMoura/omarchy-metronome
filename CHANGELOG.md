@@ -4,6 +4,19 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.6] - 2026-09-19
+
+### Changed
+
+- The time signature, subdivision and keys dialogs follow Flea's current
+  cards. The window dims by half behind an open card, and a scroll over the
+  dimmed ground no longer reaches the controls beneath it. Titles are bold
+  at the body size; the Notes label is bold and tracked. A subdivision tile
+  takes the shell's own hover and selected fills from `shell.toml`'s
+  `[controls]`. The keys sheet gains the settings header, `esc` beside a
+  close mark at the hit floor, and draws each key in a hairline cap.
+- The README's dialog screenshots are retaken.
+
 ## [0.1.5] - 2026-09-16
 
 ### Changed
